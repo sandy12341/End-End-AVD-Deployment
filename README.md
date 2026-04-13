@@ -222,13 +222,17 @@ To republish to a different Azure AD tenant or subscription:
 az bicep build --file infra/managedapp/mainTemplate.bicep --outfile infra/managedapp/dist/mainTemplate.json
 az bicep build --file infra/managedapp/deployDefinition.bicep --outfile infra/managedapp/dist/deployDefinition.json
 
-# 3. Create new app.zip package
-cd infra/managedapp/dist
-zip -r app.zip mainTemplate.json createUiDefinition.json
-cd ../../..
+# 3. Refresh the package staging folder
+cp infra/managedapp/dist/mainTemplate.json infra/managedapp/dist/package/mainTemplate.json
+cp infra/managedapp/createUiDefinition.json infra/managedapp/dist/package/createUiDefinition.json
 
-# 4. Upload app.zip to your blob storage or GitHub release
-# 5. Deploy managedApplicationDefinition to shared subscription
+# 4. Create new app.zip package from the staged payload
+cd infra/managedapp/dist/package
+zip -r ../app.zip mainTemplate.json createUiDefinition.json
+cd ../../../..
+
+# 5. Upload app.zip to your blob storage or GitHub release
+# 6. Deploy managedApplicationDefinition to shared subscription
 PACKAGE_URI="https://your-storage-account.blob.core.windows.net/container/app.zip"
 PRINCIPAL_ID="$(az ad signed-in-user show --query id -o tsv)"
 
