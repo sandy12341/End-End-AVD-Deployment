@@ -1,6 +1,6 @@
 # Azure Virtual Desktop + Landing Zone
 
-Production-ready Azure Virtual Desktop deployment with Landing Zone architecture. Includes validated `PersonalDesktop`, `PooledRemoteApp`, and `PooledDesktopAndRemoteApp` delivery modes, FSLogix profile containers, Entra ID join, network segmentation, and monitoring.
+Production-ready Azure Virtual Desktop deployment with Landing Zone architecture. Includes validated `PersonalDesktop`, `PooledRemoteApp`, and `PooledDesktopAndRemoteApp` delivery modes, marketplace or Azure Compute Gallery session host images, FSLogix profile containers, Entra ID join, network segmentation, monitoring, and typed access assignments.
 
 ## Deploy to Azure
 
@@ -15,6 +15,7 @@ Click the button below for a guided deployment with dynamic VNet and subnet sele
 - Multi-step portal wizard (5 steps)
 - **VNet selection dropdown** — lists all VNets in subscription
 - **Subnet selection dropdown** — filtered by selected VNet  
+- **Image source selection** — marketplace or Azure Compute Gallery
 - Configure host pool, session hosts, FSLogix, monitoring
 - Auto-deploy to your subscription, your resources
 
@@ -252,13 +253,14 @@ No cross-tenant permissions needed — each user manages their own deployed reso
 ## Features
 
 - **Delivery Modes**: `PersonalDesktop`, `PooledRemoteApp`, and `PooledDesktopAndRemoteApp`, with legacy `hostPoolType` fallback for existing desktop-only deployments
+- **Image Source**: Session hosts can deploy from Marketplace or Azure Compute Gallery images
 - **Host Pool**: Pooled (BreadthFirst) or Personal, with Start VM on Connect
 - **Session Hosts**: Windows 11 24H2 Multi-Session, Entra ID joined, System Assigned Managed Identity
 - **FSLogix**: Azure Files share for user profile containers (Entra ID Kerberos auth, VNet-restricted)
 - **Networking**: Uses an existing VNet and existing subnets selected at deployment time through the portal wizard
 - **Monitoring**: Log Analytics workspace for diagnostics
 - **Application Publishing**: Desktop app group, RemoteApp app group, or both from the same template
-- **Access Assignment**: When `avdUserObjectIds` is provided, the template assigns `Desktop Virtualization User` on published app groups and `Virtual Machine User Login` on the resource group for Entra ID deployments.
+- **Access Assignment**: Use `desktopAccessAssignments` and `remoteAppAccessAssignments` for typed `User`, `Group`, or `ServicePrincipal` assignment scopes. The legacy `avdUserObjectIds` input is still supported as a compatibility shortcut for shared user assignments.
 - **Security**: TLS 1.2 enforced on storage, no shared key access, and a CSE-driven AVD agent install using a GitHub-hosted script to avoid Windows command-line length limits
 
 ## Prerequisites
@@ -322,6 +324,16 @@ New-AzResourceGroupDeployment `
 | `environment` | string | `dev` | Environment: dev, test, prod |
 | `sessionHostCount` | int | `1` | Number of session host VMs (1-10) |
 | `vmSize` | string | `Standard_D2ads_v5` | VM SKU for session hosts |
+| `imageSource` | string | `Marketplace` | Session host image source: `Marketplace` or `AzureComputeGallery` |
+| `marketplaceImagePublisher` | string | `microsoftwindowsdesktop` | Marketplace publisher used when `imageSource=Marketplace` |
+| `marketplaceImageOffer` | string | `windows-11` | Marketplace offer used when `imageSource=Marketplace` |
+| `marketplaceImageSku` | string | `win11-24h2-avd` | Marketplace SKU used when `imageSource=Marketplace` |
+| `marketplaceImageVersion` | string | `latest` | Marketplace version used when `imageSource=Marketplace` |
+| `galleryImageSubscriptionId` | string | current subscription | Gallery subscription used when `imageSource=AzureComputeGallery` |
+| `galleryImageResourceGroupName` | string | _(empty)_ | Gallery resource group used when `imageSource=AzureComputeGallery` |
+| `galleryName` | string | _(empty)_ | Gallery name used when `imageSource=AzureComputeGallery` |
+| `galleryImageDefinitionName` | string | _(empty)_ | Gallery image definition used when `imageSource=AzureComputeGallery` |
+| `galleryImageVersion` | string | `latest` | Gallery image version used when `imageSource=AzureComputeGallery` |
 | `avdMode` | string | _(empty)_ | Preferred routing model: `PersonalDesktop`, `PooledRemoteApp`, or `PooledDesktopAndRemoteApp`. Leave empty to preserve the legacy desktop-only behavior from `hostPoolType`. |
 | `hostPoolType` | string | `Pooled` | Legacy fallback for desktop-only deployments when `avdMode` is empty |
 | `adminUsername` | string | `avdadmin` | Local admin username |
@@ -329,10 +341,12 @@ New-AzResourceGroupDeployment `
 | `deployFSLogix` | bool | `true` | Deploy FSLogix Azure Files storage |
 | `storageAccountName` | string | - | Required unique storage account name for FSLogix (globally unique, 3-24 chars) |
 | `deployMonitoring` | bool | `true` | Deploy Log Analytics workspace |
-| `avdUserObjectIds` | string | _(empty)_ | Comma- or newline-separated Entra object IDs to grant AVD access. Leave empty to skip. Get a user ID via: `az ad user show --id user@domain.com --query id -o tsv` |
+| `avdUserObjectIds` | string | _(empty)_ | Compatibility input for comma- or newline-separated Entra user object IDs applied to all published app groups |
+| `desktopAccessAssignments` | array | `[]` | Typed access assignments for the desktop app group. Each item includes `principalId` and `principalType` |
+| `remoteAppAccessAssignments` | array | `[]` | Typed access assignments for the RemoteApp app group. Each item includes `principalId` and `principalType` |
 | `remoteApps` | array | `[]` | RemoteApp definitions used when `avdMode` publishes RemoteApps |
 
-If `avdUserObjectIds` is supplied, the template assigns end-user access automatically. If it is left empty, assign access after deployment.
+If `desktopAccessAssignments` or `remoteAppAccessAssignments` is supplied, the template assigns end-user access automatically. If they are left empty, you can still use `avdUserObjectIds` as a compatibility shortcut or assign access after deployment.
 
 ### RemoteApp example
 
@@ -356,6 +370,9 @@ If `avdUserObjectIds` is supplied, the template assigns end-user access automati
 - `infra/samples/main.personaldesktop.parameters.json`
 - `infra/samples/main.pooledremoteapp.parameters.json`
 - `infra/samples/main.pooleddesktopandremoteapp.parameters.json`
+- `infra/samples/main.personaldesktop.gallery.parameters.json`
+- `infra/samples/main.pooledremoteapp.gallery.parameters.json`
+- `infra/samples/main.pooleddesktopandremoteapp.gallery.parameters.json`
 
 Use one of the sample files directly with Azure CLI or PowerShell and override only the environment-specific secure values:
 

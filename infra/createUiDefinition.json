@@ -81,6 +81,115 @@
             }
           },
           {
+            "name": "imageSource",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Image source",
+            "defaultValue": "Marketplace",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label": "Marketplace",
+                  "value": "Marketplace"
+                },
+                {
+                  "label": "Azure Compute Gallery",
+                  "value": "AzureComputeGallery"
+                }
+              ]
+            }
+          },
+          {
+            "name": "marketplaceImagePublisher",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Marketplace publisher",
+            "defaultValue": "microsoftwindowsdesktop",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+            }
+          },
+          {
+            "name": "marketplaceImageOffer",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Marketplace offer",
+            "defaultValue": "windows-11",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+            }
+          },
+          {
+            "name": "marketplaceImageSku",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Marketplace SKU",
+            "defaultValue": "win11-24h2-avd",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+            }
+          },
+          {
+            "name": "marketplaceImageVersion",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Marketplace version",
+            "defaultValue": "latest",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+            }
+          },
+          {
+            "name": "galleryImageSubscriptionId",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gallery subscription ID",
+            "defaultValue": "",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+            }
+          },
+          {
+            "name": "galleryImageResourceGroupName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gallery resource group",
+            "defaultValue": "",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+            }
+          },
+          {
+            "name": "galleryName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gallery name",
+            "defaultValue": "",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+            }
+          },
+          {
+            "name": "galleryImageDefinitionName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gallery image definition",
+            "defaultValue": "",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+            }
+          },
+          {
+            "name": "galleryImageVersion",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Gallery image version",
+            "defaultValue": "latest",
+            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+            }
+          },
+          {
             "name": "avdMode",
             "type": "Microsoft.Common.DropDown",
             "label": "AVD Mode",
@@ -231,14 +340,38 @@
           {
             "name": "avdUserObjectIds",
             "type": "Microsoft.Common.TextBox",
-            "label": "Optional AVD user object IDs",
+            "label": "Legacy shared access object IDs",
             "defaultValue": "",
             "multiLine": true,
-            "toolTip": "Leave blank to skip automatic end-user role assignments. Enter one or more Entra Object IDs, separated by commas or new lines.",
+            "toolTip": "Compatibility path. Leave blank to skip. If supplied, these User object IDs are applied to all published app groups.",
             "constraints": {
               "required": false,
               "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
               "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
+            }
+          },
+          {
+            "name": "desktopAccessAssignmentsJson",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Desktop access assignments (JSON array)",
+            "defaultValue": "[]",
+            "multiLine": true,
+            "visible": "[or(equals(steps('instanceDetails').avdMode, ''), equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
+            "toolTip": "Optional. JSON array of objects with principalId and principalType. Example: [{\"principalId\":\"<guid>\",\"principalType\":\"User\"}]",
+            "constraints": {
+              "required": false
+            }
+          },
+          {
+            "name": "remoteAppAccessAssignmentsJson",
+            "type": "Microsoft.Common.TextBox",
+            "label": "RemoteApp access assignments (JSON array)",
+            "defaultValue": "[]",
+            "multiLine": true,
+            "visible": "[or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
+            "toolTip": "Optional. JSON array of objects with principalId and principalType. Example: [{\"principalId\":\"<guid>\",\"principalType\":\"Group\"}]",
+            "constraints": {
+              "required": false
             }
           },
           {
@@ -262,6 +395,16 @@
       "environment": "[basics('environment')]",
       "sessionHostCount": "[steps('instanceDetails').sessionHostCount]",
       "vmSize": "[steps('instanceDetails').vmSize]",
+      "imageSource": "[steps('instanceDetails').imageSource]",
+      "marketplaceImagePublisher": "[steps('instanceDetails').marketplaceImagePublisher]",
+      "marketplaceImageOffer": "[steps('instanceDetails').marketplaceImageOffer]",
+      "marketplaceImageSku": "[steps('instanceDetails').marketplaceImageSku]",
+      "marketplaceImageVersion": "[steps('instanceDetails').marketplaceImageVersion]",
+      "galleryImageSubscriptionId": "[if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId)]",
+      "galleryImageResourceGroupName": "[steps('instanceDetails').galleryImageResourceGroupName]",
+      "galleryName": "[steps('instanceDetails').galleryName]",
+      "galleryImageDefinitionName": "[steps('instanceDetails').galleryImageDefinitionName]",
+      "galleryImageVersion": "[steps('instanceDetails').galleryImageVersion]",
       "avdMode": "[steps('instanceDetails').avdMode]",
       "hostPoolType": "[steps('instanceDetails').hostPoolType]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
@@ -275,6 +418,8 @@
       "storageAccountName": "[steps('storageMonitoring').storageAccountName]",
       "deployMonitoring": "[steps('storageMonitoring').deployMonitoring]",
       "avdUserObjectIds": "[steps('access').avdUserObjectIds]",
+      "desktopAccessAssignments": "[if(empty(steps('access').desktopAccessAssignmentsJson), parse('[]'), parse(steps('access').desktopAccessAssignmentsJson))]",
+      "remoteAppAccessAssignments": "[if(empty(steps('access').remoteAppAccessAssignmentsJson), parse('[]'), parse(steps('access').remoteAppAccessAssignmentsJson))]",
       "remoteApps": "[if(or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp')), parse(steps('access').remoteAppsJson), parse('[]'))]"
     }
   }

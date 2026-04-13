@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.30.3.12046",
-      "templateHash": "12047730265763022445"
+      "templateHash": "8235818617199084710"
     }
   },
   "parameters": {
@@ -50,6 +50,80 @@
       "defaultValue": "Standard_D2ads_v5",
       "metadata": {
         "description": "VM size for session hosts"
+      }
+    },
+    "imageSource": {
+      "type": "string",
+      "defaultValue": "Marketplace",
+      "allowedValues": [
+        "Marketplace",
+        "AzureComputeGallery"
+      ],
+      "metadata": {
+        "description": "Image source for the session host OS image."
+      }
+    },
+    "marketplaceImagePublisher": {
+      "type": "string",
+      "defaultValue": "microsoftwindowsdesktop",
+      "metadata": {
+        "description": "Marketplace image publisher for session hosts when imageSource is Marketplace."
+      }
+    },
+    "marketplaceImageOffer": {
+      "type": "string",
+      "defaultValue": "windows-11",
+      "metadata": {
+        "description": "Marketplace image offer for session hosts when imageSource is Marketplace."
+      }
+    },
+    "marketplaceImageSku": {
+      "type": "string",
+      "defaultValue": "win11-24h2-avd",
+      "metadata": {
+        "description": "Marketplace image SKU for session hosts when imageSource is Marketplace."
+      }
+    },
+    "marketplaceImageVersion": {
+      "type": "string",
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Marketplace image version for session hosts when imageSource is Marketplace."
+      }
+    },
+    "galleryImageSubscriptionId": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]",
+      "metadata": {
+        "description": "Azure Compute Gallery subscription ID for session hosts when imageSource is AzureComputeGallery."
+      }
+    },
+    "galleryImageResourceGroupName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Azure Compute Gallery resource group name for session hosts when imageSource is AzureComputeGallery."
+      }
+    },
+    "galleryName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Azure Compute Gallery name for session hosts when imageSource is AzureComputeGallery."
+      }
+    },
+    "galleryImageDefinitionName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Azure Compute Gallery image definition name for session hosts when imageSource is AzureComputeGallery."
+      }
+    },
+    "galleryImageVersion": {
+      "type": "string",
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Azure Compute Gallery image version for session hosts when imageSource is AzureComputeGallery."
       }
     },
     "avdMode": {
@@ -187,6 +261,20 @@
         "description": "Comma or newline separated Entra Object IDs to grant AVD access. Leave empty to skip role assignments."
       }
     },
+    "desktopAccessAssignments": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Typed access assignments for the desktop application group. Each item must include principalId and principalType."
+      }
+    },
+    "remoteAppAccessAssignments": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Typed access assignments for the RemoteApp application group. Each item must include principalId and principalType."
+      }
+    },
     "remoteApps": {
       "type": "array",
       "defaultValue": [],
@@ -208,6 +296,14 @@
         "name": "normalizedAvdUserObjectIds",
         "count": "[length(split(replace(replace(parameters('avdUserObjectIds'), '\r\n', ','), '\n', ','), ','))]",
         "input": "[trim(split(replace(replace(parameters('avdUserObjectIds'), '\r\n', ','), '\n', ','), ',')[copyIndex('normalizedAvdUserObjectIds')])]"
+      },
+      {
+        "name": "legacyAccessAssignments",
+        "count": "[length(variables('normalizedAvdUserObjectIds'))]",
+        "input": {
+          "principalId": "[variables('normalizedAvdUserObjectIds')[copyIndex('legacyAccessAssignments')]]",
+          "principalType": "User"
+        }
       }
     ],
     "namingPrefix": "[format('{0}-{1}', parameters('deploymentPrefix'), parameters('environment'))]",
@@ -220,6 +316,10 @@
     "existingVnetId": "[resourceId(parameters('existingVnetResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))]",
     "sessionHostSubnetId": "[resourceId(parameters('existingVnetResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))]",
     "privateEndpointSubnetId": "[resourceId(parameters('existingVnetResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName'))]",
+    "desktopEffectiveAssignments": "[union(parameters('desktopAccessAssignments'), if(variables('publishDesktop'), variables('legacyAccessAssignments'), createArray()))]",
+    "remoteAppEffectiveAssignments": "[union(parameters('remoteAppAccessAssignments'), if(variables('publishRemoteApps'), variables('legacyAccessAssignments'), createArray()))]",
+    "vmLoginEffectiveAssignments": "[union(variables('desktopEffectiveAssignments'), variables('remoteAppEffectiveAssignments'))]",
+    "sessionHostImageReference": "[if(equals(parameters('imageSource'), 'AzureComputeGallery'), createObject('id', resourceId(parameters('galleryImageSubscriptionId'), parameters('galleryImageResourceGroupName'), 'Microsoft.Compute/galleries/images/versions', parameters('galleryName'), parameters('galleryImageDefinitionName'), parameters('galleryImageVersion'))), createObject('publisher', parameters('marketplaceImagePublisher'), 'offer', parameters('marketplaceImageOffer'), 'sku', parameters('marketplaceImageSku'), 'version', parameters('marketplaceImageVersion')))]",
     "tags": {
       "Environment": "[parameters('environment')]",
       "Project": "AVD-Landing-Zone",
@@ -230,17 +330,17 @@
     {
       "copy": {
         "name": "desktopAvdUserRole",
-        "count": "[length(variables('normalizedAvdUserObjectIds'))]"
+        "count": "[length(variables('desktopEffectiveAssignments'))]"
       },
-      "condition": "[and(variables('publishDesktop'), not(empty(variables('normalizedAvdUserObjectIds')[copyIndex()])))]",
+      "condition": "[and(variables('publishDesktop'), not(empty(string(variables('desktopEffectiveAssignments')[copyIndex()].principalId))))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[format('Microsoft.DesktopVirtualization/applicationGroups/{0}', variables('desktopAppGroupName'))]",
-      "name": "[guid(resourceGroup().id, variables('desktopAppGroupName'), variables('normalizedAvdUserObjectIds')[copyIndex()], '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
+      "name": "[guid(resourceGroup().id, variables('desktopAppGroupName'), string(variables('desktopEffectiveAssignments')[copyIndex()].principalType), string(variables('desktopEffectiveAssignments')[copyIndex()].principalId), '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
       "properties": {
-        "principalId": "[variables('normalizedAvdUserObjectIds')[copyIndex()]]",
+        "principalId": "[string(variables('desktopEffectiveAssignments')[copyIndex()].principalId)]",
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
-        "principalType": "User"
+        "principalType": "[string(variables('desktopEffectiveAssignments')[copyIndex()].principalType)]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'deploy-hostpool')]"
@@ -249,17 +349,17 @@
     {
       "copy": {
         "name": "remoteAppAvdUserRole",
-        "count": "[length(variables('normalizedAvdUserObjectIds'))]"
+        "count": "[length(variables('remoteAppEffectiveAssignments'))]"
       },
-      "condition": "[and(variables('publishRemoteApps'), not(empty(variables('normalizedAvdUserObjectIds')[copyIndex()])))]",
+      "condition": "[and(variables('publishRemoteApps'), not(empty(string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalId))))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[format('Microsoft.DesktopVirtualization/applicationGroups/{0}', variables('remoteAppGroupName'))]",
-      "name": "[guid(resourceGroup().id, variables('remoteAppGroupName'), variables('normalizedAvdUserObjectIds')[copyIndex()], '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
+      "name": "[guid(resourceGroup().id, variables('remoteAppGroupName'), string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalType), string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalId), '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
       "properties": {
-        "principalId": "[variables('normalizedAvdUserObjectIds')[copyIndex()]]",
+        "principalId": "[string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalId)]",
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
-        "principalType": "User"
+        "principalType": "[string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalType)]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'deploy-hostpool')]"
@@ -268,16 +368,16 @@
     {
       "copy": {
         "name": "vmLoginRole",
-        "count": "[length(variables('normalizedAvdUserObjectIds'))]"
+        "count": "[length(variables('vmLoginEffectiveAssignments'))]"
       },
-      "condition": "[and(equals(parameters('authenticationType'), 'EntraID'), not(empty(variables('normalizedAvdUserObjectIds')[copyIndex()])))]",
+      "condition": "[and(and(equals(parameters('authenticationType'), 'EntraID'), not(empty(string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalId)))), not(equals(string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalType), 'ServicePrincipal')))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "name": "[guid(resourceGroup().id, variables('normalizedAvdUserObjectIds')[copyIndex()], 'fb879df8-f326-4884-b1cf-06f3ad86be52')]",
+      "name": "[guid(resourceGroup().id, string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalType), string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalId), 'fb879df8-f326-4884-b1cf-06f3ad86be52')]",
       "properties": {
-        "principalId": "[variables('normalizedAvdUserObjectIds')[copyIndex()]]",
+        "principalId": "[string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalId)]",
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'fb879df8-f326-4884-b1cf-06f3ad86be52')]",
-        "principalType": "User"
+        "principalType": "[string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalType)]"
       }
     },
     {
@@ -595,6 +695,9 @@
           "vmSize": {
             "value": "[parameters('vmSize')]"
           },
+          "imageReference": {
+            "value": "[variables('sessionHostImageReference')]"
+          },
           "subnetId": {
             "value": "[variables('sessionHostSubnetId')]"
           },
@@ -639,7 +742,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.30.3.12046",
-              "templateHash": "16167346065916922748"
+              "templateHash": "14047559784368164342"
             }
           },
           "parameters": {
@@ -737,7 +840,7 @@
                 "version": "latest"
               },
               "metadata": {
-                "description": "OS image reference"
+                "description": "OS image reference for session hosts. Supports marketplace or Azure Compute Gallery image references."
               }
             },
             "tags": {
@@ -1372,7 +1475,7 @@
     },
     "avdRolesAssigned": {
       "type": "bool",
-      "value": "[greater(length(trim(replace(replace(replace(parameters('avdUserObjectIds'), '\r', ''), '\n', ''), ',', ''))), 0)]"
+      "value": "[or(greater(length(variables('desktopEffectiveAssignments')), 0), greater(length(variables('remoteAppEffectiveAssignments')), 0))]"
     }
   }
 }

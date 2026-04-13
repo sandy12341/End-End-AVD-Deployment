@@ -39,7 +39,7 @@ param domainJoinPassword string = ''
 @description('Optional OU path where computer accounts should be created for HybridJoin (for example OU=AVD,DC=contoso,DC=com)')
 param domainJoinOuPath string = ''
 
-@description('OS image reference')
+@description('OS image reference for session hosts. Supports marketplace or Azure Compute Gallery image references.')
 param imageReference object = {
   publisher: 'microsoftwindowsdesktop'
   offer: 'windows-11'

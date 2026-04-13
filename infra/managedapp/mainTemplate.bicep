@@ -19,6 +19,37 @@ param sessionHostCount int = 1
 @description('VM size for session hosts')
 param vmSize string = 'Standard_D2ads_v5'
 
+@description('Image source for the session host OS image.')
+@allowed(['Marketplace', 'AzureComputeGallery'])
+param imageSource string = 'Marketplace'
+
+@description('Marketplace image publisher for session hosts when imageSource is Marketplace.')
+param marketplaceImagePublisher string = 'microsoftwindowsdesktop'
+
+@description('Marketplace image offer for session hosts when imageSource is Marketplace.')
+param marketplaceImageOffer string = 'windows-11'
+
+@description('Marketplace image SKU for session hosts when imageSource is Marketplace.')
+param marketplaceImageSku string = 'win11-24h2-avd'
+
+@description('Marketplace image version for session hosts when imageSource is Marketplace.')
+param marketplaceImageVersion string = 'latest'
+
+@description('Azure Compute Gallery subscription ID for session hosts when imageSource is AzureComputeGallery.')
+param galleryImageSubscriptionId string = subscription().subscriptionId
+
+@description('Azure Compute Gallery resource group name for session hosts when imageSource is AzureComputeGallery.')
+param galleryImageResourceGroupName string = ''
+
+@description('Azure Compute Gallery name for session hosts when imageSource is AzureComputeGallery.')
+param galleryName string = ''
+
+@description('Azure Compute Gallery image definition name for session hosts when imageSource is AzureComputeGallery.')
+param galleryImageDefinitionName string = ''
+
+@description('Azure Compute Gallery image version for session hosts when imageSource is AzureComputeGallery.')
+param galleryImageVersion string = 'latest'
+
 @description('Preferred AVD delivery mode. Leave empty to preserve the legacy desktop-only behavior driven by hostPoolType.')
 @allowed(['', 'PersonalDesktop', 'PooledRemoteApp', 'PooledDesktopAndRemoteApp'])
 param avdMode string = ''
@@ -80,6 +111,12 @@ param hostPoolName string
 @description('Comma or newline separated Entra Object IDs to grant AVD access. Leave empty to skip role assignments.')
 param avdUserObjectIds string = ''
 
+@description('Typed access assignments for the desktop application group. Each item must include principalId and principalType.')
+param desktopAccessAssignments array = []
+
+@description('Typed access assignments for the RemoteApp application group. Each item must include principalId and principalType.')
+param remoteAppAccessAssignments array = []
+
 @description('RemoteApp definitions used when avdMode publishes RemoteApps. Each item must include name and filePath and can optionally include friendlyName, description, commandLineSetting, and commandLineArguments.')
 param remoteApps array = []
 
@@ -97,6 +134,23 @@ var existingVnetId = resourceId(existingVnetResourceGroupName, 'Microsoft.Networ
 var sessionHostSubnetId = resourceId(existingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', existingVnetName, sessionHostSubnetName)
 var privateEndpointSubnetId = resourceId(existingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', existingVnetName, privateEndpointSubnetName)
 var normalizedAvdUserObjectIds = [for oid in split(replace(replace(avdUserObjectIds, '\r\n', ','), '\n', ','), ','): trim(oid)]
+var legacyAccessAssignments = [for oid in normalizedAvdUserObjectIds: {
+  principalId: oid
+  principalType: 'User'
+}]
+var desktopEffectiveAssignments = union(desktopAccessAssignments, publishDesktop ? legacyAccessAssignments : [])
+var remoteAppEffectiveAssignments = union(remoteAppAccessAssignments, publishRemoteApps ? legacyAccessAssignments : [])
+var vmLoginEffectiveAssignments = union(desktopEffectiveAssignments, remoteAppEffectiveAssignments)
+var sessionHostImageReference = imageSource == 'AzureComputeGallery'
+  ? {
+      id: resourceId(galleryImageSubscriptionId, galleryImageResourceGroupName, 'Microsoft.Compute/galleries/images/versions', galleryName, galleryImageDefinitionName, galleryImageVersion)
+    }
+  : {
+      publisher: marketplaceImagePublisher
+      offer: marketplaceImageOffer
+      sku: marketplaceImageSku
+      version: marketplaceImageVersion
+    }
 var tags = {
   Environment: environment
   Project: 'AVD-Landing-Zone'
@@ -126,6 +180,7 @@ module sessionHosts '../modules/sessionhosts.bicep' = {
     location: location
     sessionHostCount: sessionHostCount
     vmSize: vmSize
+    imageReference: sessionHostImageReference
     subnetId: sessionHostSubnetId
     hostPoolName: hostPool.outputs.hostPoolName
     adminUsername: adminUsername
@@ -168,38 +223,38 @@ resource remoteAppGroup 'Microsoft.DesktopVirtualization/applicationGroups@2024-
   name: remoteAppGroupName
 }
 
-resource desktopAvdUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for oid in normalizedAvdUserObjectIds: if (publishDesktop && !empty(oid)) {
-  name: guid(resourceGroup().id, desktopAppGroupName, oid, '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')
+resource desktopAvdUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for assignment in desktopEffectiveAssignments: if (publishDesktop && !empty(string(assignment.principalId))) {
+  name: guid(resourceGroup().id, desktopAppGroupName, string(assignment.principalType), string(assignment.principalId), '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')
   scope: desktopAppGroup
   dependsOn: [
     hostPool
   ]
   properties: {
-    principalId: oid
+    principalId: string(assignment.principalId)
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')
-    principalType: 'User'
+    principalType: string(assignment.principalType)
   }
 }]
 
-resource remoteAppAvdUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for oid in normalizedAvdUserObjectIds: if (publishRemoteApps && !empty(oid)) {
-  name: guid(resourceGroup().id, remoteAppGroupName, oid, '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')
+resource remoteAppAvdUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for assignment in remoteAppEffectiveAssignments: if (publishRemoteApps && !empty(string(assignment.principalId))) {
+  name: guid(resourceGroup().id, remoteAppGroupName, string(assignment.principalType), string(assignment.principalId), '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')
   scope: remoteAppGroup
   dependsOn: [
     hostPool
   ]
   properties: {
-    principalId: oid
+    principalId: string(assignment.principalId)
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')
-    principalType: 'User'
+    principalType: string(assignment.principalType)
   }
 }]
 
-resource vmLoginRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for oid in normalizedAvdUserObjectIds: if (authenticationType == 'EntraID' && !empty(oid)) {
-  name: guid(resourceGroup().id, oid, 'fb879df8-f326-4884-b1cf-06f3ad86be52')
+resource vmLoginRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for assignment in vmLoginEffectiveAssignments: if (authenticationType == 'EntraID' && !empty(string(assignment.principalId)) && string(assignment.principalType) != 'ServicePrincipal') {
+  name: guid(resourceGroup().id, string(assignment.principalType), string(assignment.principalId), 'fb879df8-f326-4884-b1cf-06f3ad86be52')
   properties: {
-    principalId: oid
+    principalId: string(assignment.principalId)
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'fb879df8-f326-4884-b1cf-06f3ad86be52')
-    principalType: 'User'
+    principalType: string(assignment.principalType)
   }
 }]
 
@@ -214,4 +269,4 @@ output sessionHostVmNames array = sessionHosts.outputs.vmNames
 output fslogixStorageAccount string = deployFSLogix ? fslogix!.outputs.storageAccountName : 'N/A'
 output logAnalyticsWorkspace string = deployMonitoring ? monitoring!.outputs.workspaceName : 'N/A'
 output effectiveAvdMode string = effectiveAvdMode
-output avdRolesAssigned bool = length(trim(replace(replace(replace(avdUserObjectIds, '\r', ''), '\n', ''), ',', ''))) > 0
+output avdRolesAssigned bool = length(desktopEffectiveAssignments) > 0 || length(remoteAppEffectiveAssignments) > 0
