@@ -22,11 +22,11 @@ Exit criteria:
 Scope:
 - Generalize assignment inputs from raw user IDs to typed principal assignments.
 - Add support for groups and separate desktop versus RemoteApp audiences.
-- Reconcile resolver-mode implementation with docs and parameter files.
+- Remove obsolete resolver-era parameters and helper artifacts from the baseline.
 
 Exit criteria:
 - User assignment and group assignment both work.
-- Resolver mode is either fully implemented or clearly removed from unsupported surfaces.
+- The baseline no longer ships unsupported resolver parameters or scripts.
 
 ### Phase 3: Expanded Auth Models
 

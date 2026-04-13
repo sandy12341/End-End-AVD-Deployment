@@ -52,7 +52,7 @@ The portal form is generated from the template parameters.
 - `vnetAddressPrefix`
 - `sessionHostSubnetPrefix`
 - `privateEndpointSubnetPrefix`
-- `avdUserObjectId`
+- `avdUserObjectIds`
 
 ### Validation rules enforced by the template
 
@@ -91,7 +91,7 @@ Execution behavior:
 - `network`, `hostPool`, and `monitoring` can start independently
 - `fslogix` waits for `network`, because it needs the session host subnet ID
 - `sessionHosts` waits for both `network` and `hostPool`
-- User role assignments run only if `avdUserObjectId` is provided
+- User role assignments run only if `avdUserObjectIds` is provided
 
 ---
 
@@ -329,7 +329,7 @@ This is the current hardened registration path. It avoids passing the registrati
 
 ## 11. What happens with role assignments
 
-If `avdUserObjectId` is provided, the deployment also grants the user access.
+If `avdUserObjectIds` is provided, the deployment also grants the user access.
 
 The template creates the user-facing role assignments that match the selected delivery mode:
 
@@ -353,7 +353,7 @@ There is also a machine-facing role assignment:
 
 That machine role is what lets the VM retrieve a registration token from the host pool during provisioning.
 
-If the deployer does not have sufficient permission to create RBAC assignments, leave `avdUserObjectId` empty and assign those roles after deployment.
+If the deployer does not have sufficient permission to create RBAC assignments, leave `avdUserObjectIds` empty and assign those roles after deployment.
 
 To get an Entra user object ID:
 
@@ -450,7 +450,7 @@ From the user perspective, the important end state is:
 
 - the AVD workspace exists
 - the desktop application group is attached
-- the target user has access if `avdUserObjectId` was supplied
+- the target user has access if `avdUserObjectIds` was supplied
 - the session host is registered and available
 - the user can connect through the AVD web client or Windows App
 
@@ -499,7 +499,7 @@ The current template downloads `Install-AVDAgent.ps1` from the repository at dep
 
 The button deploys the landing zone successfully, but some operational steps remain tenant-specific or post-deployment decisions, for example:
 
-- assigning additional users or groups beyond the one optional `avdUserObjectId`
+- assigning additional users or groups beyond the optional `avdUserObjectIds` input
 - configuring enterprise policy for FSLogix settings at scale
 - attaching additional diagnostic settings if broader monitoring is required
 - introducing private endpoints and private DNS if the environment needs fully private access patterns

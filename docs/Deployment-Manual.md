@@ -194,7 +194,7 @@ az deployment group create \
   --parameters @infra/samples/main.pooledremoteapp.parameters.json \
   --parameters adminPassword='YourSecurePassword123!' \
                storageAccountName='stavdmyappdev001' \
-               avdUserObjectId='00000000-0000-0000-0000-000000000000'
+               avdUserObjectIds='00000000-0000-0000-0000-000000000000'
 ```
 
 ### 2.5 Deployment Module Execution Order
@@ -303,7 +303,7 @@ AVD-Landing-Zone/
 - `main.pooledremoteapp.parameters.json`
 - `main.pooleddesktopandremoteapp.parameters.json`
 
-Each sample still expects you to supply environment-specific secure values such as `adminPassword`, `storageAccountName`, and usually `avdUserObjectId` at deployment time.
+Each sample still expects you to supply environment-specific secure values such as `adminPassword`, `storageAccountName`, and usually `avdUserObjectIds` at deployment time.
 
 ### 3.3 `infra/azuredeploy.json` — Compiled ARM Template
 
@@ -638,9 +638,9 @@ Plus per-VM: OS Disk (managed), Entra ID device registration, RBAC role assignme
 
 ### 5.1 Post-Deployment Role Assignment
 
-If you provide `avdUserObjectId` during deployment, the template assigns the end-user RBAC automatically and no further user-access step is required.
+If you provide `avdUserObjectIds` during deployment, the template assigns the end-user RBAC automatically and no further user-access step is required.
 
-If you leave `avdUserObjectId` empty, assign the required roles after deployment.
+If you leave `avdUserObjectIds` empty, assign the required roles after deployment.
 
 #### A. Desktop Virtualization User (on the Application Group)
 

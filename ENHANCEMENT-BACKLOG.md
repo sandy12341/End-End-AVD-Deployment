@@ -27,7 +27,7 @@ Priority: P0
 - Support mixed principal types: `User`, `Group`, `ServicePrincipal`, and advanced cases only if justified.
 - Separate access assignments for desktop app groups and RemoteApp app groups.
 - Add support for group name or UPN resolution instead of forcing raw GUID entry.
-- Fix resolver-mode source-of-truth drift between documentation, parameter files, and deployable templates.
+- Remove obsolete resolver-era parameters and helper artifacts so the current object-ID model stays internally consistent.
 - Replace fixed `principalType: User` behavior with data-driven principal types.
 
 ## Phase 3: Identity and Authentication Modes

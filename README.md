@@ -26,99 +26,8 @@ Click the button below for a guided deployment with dynamic VNet and subnet sele
 5. Networking: Select VNet and subnets from dropdowns
 6. AVD Config: Delivery mode (Desktop/RemoteApp/Both)  
 7. Storage & Monitoring: FSLogix and Log Analytics options
-8. Access: (Optional) User object IDs or UPN-based resolver flow for RBAC assignment
+8. Access: (Optional) User object IDs for RBAC assignment
 9. Review and create
-
-### Resolver Identity (UPN -> Object ID)
-
-The deployment now supports resolving UPN values (for example `cadmin@contoso.com`) to Entra Object IDs during deployment by using a pre-provisioned resolver app registration.
-
-**When to use this:**
-- Use direct object IDs when you already have IDs.
-- Use resolver mode when deployment users prefer entering UPNs.
-
-**One-time setup (tenant admin):**
-1. Create an Entra app registration that will act as the resolver identity.
-2. Grant Microsoft Graph application permission to read users (least privilege needed for lookup, commonly `User.Read.All` as Application permission).
-3. Grant admin consent for the permission.
-4. Create a client secret (or certificate; current template uses client secret input).
-
-**Deployment inputs used by resolver mode:**
-- `resolveAvdUsersFromUpns`: `true`
-- `avdUserUpns`: comma/newline-separated UPNs
-- `resolverTenantId`: tenant GUID containing the app registration
-- `resolverClientId`: app (client) ID of resolver app
-- `resolverClientSecret`: resolver app client secret (secure input)
-
-If resolver mode is enabled, the deployment resolves UPNs first and then applies the same AVD role assignments as object-ID mode.
-
-**Bootstrap script (recommended):**
-
-Use the helper script to create or reuse the resolver app registration, grant Graph permission, and generate a client secret:
-
-```powershell
-pwsh -NoProfile -File infra/scripts/New-AvdResolverIdentity.ps1
-```
-
-Optional flags:
-
-```powershell
-# Custom app display name, 2-year secret, and env-style output
-pwsh -NoProfile -File infra/scripts/New-AvdResolverIdentity.ps1 `
-  -DisplayName "avd-upn-resolver-prod" `
-  -SecretYears 2 `
-  -OutputFormat env
-
-# Skip admin consent (if you plan to grant it later)
-pwsh -NoProfile -File infra/scripts/New-AvdResolverIdentity.ps1 -SkipAdminConsent
-```
-
-The script prints values you can paste into deployment parameters:
-- `resolverTenantId`
-- `resolverClientId`
-- `resolverClientSecret`
-- `resolveAvdUsersFromUpns=true`
-
-Note: Admin permissions are required to grant application permission consent in Entra ID.
-
-**Deploying with resolver credentials (Portal):**
-
-Once you have the resolver app credentials from the bootstrap script, deploying with resolver mode is straightforward:
-
-1. **Run bootstrap script** and capture the output:
-   ```powershell
-   $credentials = pwsh -NoProfile -File infra/scripts/New-AvdResolverIdentity.ps1 | ConvertFrom-Json
-   Write-Output $credentials | Format-Table
-   # Output will show: resolverTenantId, resolverClientId, resolverClientSecret
-   ```
-
-2. **Click Deploy to Azure button** (at the top of this README)
-   - Portal wizard opens with 5 steps
-
-3. **At the resolver step in the wizard** (Access/Authentication), enable **"Resolve users from UPNs during deployment"**
-   - Credential fields automatically appear (previously hidden)
-   - You now have two secret source options:
-     - **Enter secret now**: paste secret directly in PasswordBox (masked input)
-     - **Use Azure Key Vault secret**: select vault + secret name from dropdowns
-   - You will see these Portal fields:
-     - **Tenant ID** (pre-filled with your subscription tenant; update if different)
-     - **Resolver Client ID** (paste from script output)
-     - **Resolver secret source** (Direct input or Key Vault)
-     - **Resolver Client Secret** (for Direct input path)
-     - **Resolver Key Vault** and **Resolver secret** (for Key Vault path)
-     - **UPNs to resolve** (enter comma-separated or newline-separated UPNs, e.g., `user1@contoso.com, user2@contoso.com`)
-
-4. **Fill credential fields** with values from bootstrap script output and your UPN list
-  - If using Key Vault, select the vault and secret name instead of pasting the secret value
-
-5. **Complete the deployment** — values are passed at runtime; no parameter files are modified
-
-**Security note:** Portal credentials are passed directly to the deployment engine. They are never stored in your parameter files or persisted after deployment completes.
-
-**Key Vault requirements (when using Key Vault source):**
-- The selected vault must be accessible to the deploying identity.
-- The vault must allow template deployments (`enabledForTemplateDeployment`), or equivalent RBAC permissions for deployment-time secret resolution.
-- The secret value itself is not shown in the dropdown; only vault and secret metadata are listed.
 
 **Managed App Details:**
 - **Subscription:** `830ef649-535d-4642-9436-356f9619c2e4`
@@ -349,12 +258,12 @@ No cross-tenant permissions needed — each user manages their own deployed reso
 - **Networking**: Uses an existing VNet and existing subnets selected at deployment time through the portal wizard
 - **Monitoring**: Log Analytics workspace for diagnostics
 - **Application Publishing**: Desktop app group, RemoteApp app group, or both from the same template
-- **Access Assignment**: When `avdUserObjectIds` is provided, the template assigns `Desktop Virtualization User` on published app groups and `Virtual Machine User Login` on the resource group (EntraID mode). Optional resolver mode can accept UPNs and resolve them at deployment time.
+- **Access Assignment**: When `avdUserObjectIds` is provided, the template assigns `Desktop Virtualization User` on published app groups and `Virtual Machine User Login` on the resource group for Entra ID deployments.
 - **Security**: TLS 1.2 enforced on storage, no shared key access, and a CSE-driven AVD agent install using a GitHub-hosted script to avoid Windows command-line length limits
 
 ## Prerequisites
 
-- Azure subscription with **Owner** access (required for auto role assignments; Contributor is sufficient if `avdUserObjectId` is left empty)
+- Azure subscription with **Owner** access (required for auto role assignments; Contributor is sufficient if `avdUserObjectIds` is left empty)
 - Resource provider `Microsoft.DesktopVirtualization` registered
 - Resource provider `Microsoft.Storage` registered (for FSLogix)
 
@@ -386,7 +295,7 @@ az deployment group create \
   --parameters @infra/samples/main.pooleddesktopandremoteapp.parameters.json \
   --parameters adminPassword='<secure-password>' \
                storageAccountName='<globally-unique-storage-name>' \
-               avdUserObjectId='<entra-object-id>'
+               avdUserObjectIds='<entra-object-id>'
 ```
 
 ### Option 3: PowerShell
@@ -402,7 +311,7 @@ New-AzResourceGroupDeployment `
   -TemplateParameterFile "infra/samples/main.pooleddesktopandremoteapp.parameters.json" `
   -adminPassword (Read-Host -AsSecureString "Admin Password") `
   -storageAccountName "<globally-unique-storage-name>" `
-  -avdUserObjectId "<entra-object-id>"
+  -avdUserObjectIds "<entra-object-id>"
 ```
 
 ## Parameters
@@ -420,10 +329,10 @@ New-AzResourceGroupDeployment `
 | `deployFSLogix` | bool | `true` | Deploy FSLogix Azure Files storage |
 | `storageAccountName` | string | - | Required unique storage account name for FSLogix (globally unique, 3-24 chars) |
 | `deployMonitoring` | bool | `true` | Deploy Log Analytics workspace |
-| `avdUserObjectId` | string | _(empty)_ | Entra Object ID of user to grant AVD access (leave empty to skip). Get via: `az ad user show --id user@domain.com --query id -o tsv` |
+| `avdUserObjectIds` | string | _(empty)_ | Comma- or newline-separated Entra object IDs to grant AVD access. Leave empty to skip. Get a user ID via: `az ad user show --id user@domain.com --query id -o tsv` |
 | `remoteApps` | array | `[]` | RemoteApp definitions used when `avdMode` publishes RemoteApps |
 
-If `avdUserObjectId` is supplied, the template assigns end-user access automatically. If it is left empty, assign access after deployment.
+If `avdUserObjectIds` is supplied, the template assigns end-user access automatically. If it is left empty, assign access after deployment.
 
 ### RemoteApp example
 
@@ -457,12 +366,12 @@ az deployment group create \
   --parameters @infra/samples/main.pooleddesktopandremoteapp.parameters.json \
   --parameters adminPassword='<secure-password>' \
                storageAccountName='<globally-unique-storage-name>' \
-               avdUserObjectId='<entra-object-id>'
+               avdUserObjectIds='<entra-object-id>'
 ```
 
 ## Connecting to AVD
 
-- If `avdUserObjectId` was left empty, assign `Desktop Virtualization User` on the published application group and `Virtual Machine User Login` on the resource group before testing access
+- If `avdUserObjectIds` was left empty, assign `Desktop Virtualization User` on the published application group and `Virtual Machine User Login` on the resource group before testing access
 - **Web Client**: [https://client.wvd.microsoft.com](https://client.wvd.microsoft.com/arm/webclient/index.html)
 - **Windows App / RD Client**: [Download](https://aka.ms/AVDClientDownload)
 
