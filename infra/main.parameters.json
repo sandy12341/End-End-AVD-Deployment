@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deploymentPrefix": { "value": "avd1" },
+    "environment": { "value": "dev" },
+    "sessionHostCount": { "value": 1 },
+    "vmSize": { "value": "Standard_D2ads_v5" },
+    "avdMode": { "value": "" },
+    "hostPoolType": { "value": "Pooled" },
+    "authenticationType": { "value": "EntraID" },
+    "domainFqdn": { "value": "" },
+    "domainJoinUsername": { "value": "" },
+    "domainJoinPassword": { "value": "" },
+    "domainJoinOuPath": { "value": "" },
+    "hostPoolName": { "value": "hp-avd-avd1-dev" },
+    "avdUserObjectIds": { "value": "" },
+    "resolveAvdUsersFromUpns": { "value": false },
+    "avdUserUpns": { "value": "" },
+    "resolverTenantId": { "value": "" },
+    "resolverClientId": { "value": "" },
+    "resolverClientSecret": { "value": "" },
+    "adminUsername": { "value": "avdadmin" },
+    "deployFSLogix": { "value": true },
+    "deployMonitoring": { "value": true },
+    "remoteApps": { "value": [] },
+    "existingVnetName": { "value": "existing-vnet-name" },
+    "existingVnetResourceGroupName": { "value": "existing-vnet-resource-group" },
+    "sessionHostSubnetName": { "value": "existing-sessionhost-subnet" },
+    "privateEndpointSubnetName": { "value": "existing-privateendpoint-subnet" }
+  }
+}
