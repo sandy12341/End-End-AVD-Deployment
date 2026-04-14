@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.30.3.12046",
-      "templateHash": "13650299517924794437"
+      "templateHash": "2573978129934216077"
     }
   },
   "parameters": {
@@ -1078,7 +1078,10 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-network')]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
@@ -1829,7 +1832,10 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-network')]"
+      ]
     }
   ],
   "outputs": {

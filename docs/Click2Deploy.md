@@ -88,16 +88,23 @@ The top-level deployment orchestrates these major components:
 
 Execution behavior:
 
-- `network`, `hostPool`, and `monitoring` can start independently
+- When `networkMode` is `CreateNewVnet`, the deployment enforces a strict network-first sequence
+- `network` finishes before `hostPool`, `monitoring`, `fslogix`, and `sessionHosts`
+- `hostPool` starts after `network`
+- `monitoring` starts after `network`
 - `fslogix` waits for `network`, because it needs the session host subnet ID
 - `sessionHosts` waits for both `network` and `hostPool`
 - User role assignments run only if `avdUserObjectIds` is provided
+
+When `networkMode` is `UseExistingVnet`, Azure does not deploy networking resources and instead resolves the existing VNet and subnet resource IDs before the dependent modules run.
 
 ---
 
 ## 4. Phase 1: Network deployment
 
 Deployment name: `deploy-network`
+
+This phase runs only when the user selects `CreateNewVnet`.
 
 Azure creates:
 
@@ -111,6 +118,11 @@ Inside the VNet it creates:
 - `snet-avd-sessionhosts`
 - `snet-avd-privateendpoints`
 
+If the user also selects a hub VNet, Azure creates peering in both directions:
+
+- spoke-to-hub peering from the newly created VNet
+- hub-to-spoke peering in the selected hub VNet resource group
+
 Key behaviors:
 
 - Session hosts do not get public IPs
@@ -122,12 +134,17 @@ Why this matters:
 
 - The VM can reach Microsoft endpoints for Entra join, AVD registration, ARM token retrieval, and MSI downloads
 - The VM remains non-public from the internet
+- The spoke VNet, both subnets, and the peering are in place before the rest of the greenfield deployment continues
+
+If the user selects `UseExistingVnet`, this phase is skipped and the template uses the selected VNet and subnet IDs directly.
 
 ---
 
 ## 5. Phase 2: Host pool, application group, and workspace
 
 Deployment name: `deploy-hostpool`
+
+In greenfield mode this phase does not start until the network phase completes.
 
 Azure creates:
 
@@ -162,6 +179,8 @@ Deployment name: `deploy-fslogix`
 
 This runs only when `deployFSLogix` is `true`.
 
+In greenfield mode it starts only after the new network is fully provisioned.
+
 Azure creates:
 
 - Storage account
@@ -191,6 +210,8 @@ Deployment name: `deploy-monitoring`
 
 This runs only when `deployMonitoring` is `true`.
 
+In greenfield mode it also waits for the network phase to complete before it starts.
+
 Azure creates:
 
 - Log Analytics workspace: `log-avd-<prefix>-<env>`
@@ -204,6 +225,11 @@ This gives the landing zone a monitoring workspace, although not every diagnosti
 Deployment name: `deploy-sessionhosts`
 
 This is the longest and most important phase.
+
+It starts only after:
+
+- the host pool exists
+- the network phase has completed, including the session host subnet and any requested hub peering
 
 For each requested session host, Azure creates:
 
@@ -258,6 +284,24 @@ Example validated result:
 - `avdavd1deve5gs0`
 
 This is a deliberate hardening change. It prevents repeated test deployments from reusing the same Windows hostname and colliding with stale Microsoft Entra device objects.
+
+---
+
+## 9. End-to-end flow when the user chooses CreateNewVnet
+
+When the user selects `CreateNewVnet`, the deployment runs in this order:
+
+1. Portal captures the new VNet name, VNet CIDR, session host subnet name and CIDR, private endpoint subnet name and CIDR, and optional hub VNet.
+2. ARM starts `deploy-network`.
+3. `deploy-network` creates the NAT public IP, NAT gateway, session host NSG, new spoke VNet, session host subnet, and private endpoint subnet.
+4. If a hub VNet was selected, ARM creates the spoke-to-hub peering and the reverse hub-to-spoke peering.
+5. After networking completes, ARM starts `deploy-hostpool` and optional `deploy-monitoring`.
+6. After networking completes, ARM starts optional `deploy-fslogix` if FSLogix is enabled.
+7. After both networking and host pool deployment are complete, ARM starts `deploy-sessionhosts`.
+8. Session hosts join Entra ID or Hybrid Join, install the AVD agent, and register into the host pool.
+9. After the app groups exist, optional role assignments are applied for desktop access, RemoteApp access, and VM login access.
+
+This means the greenfield path now behaves as a true foundation-first deployment: network first, platform second, compute last.
 
 ---
 

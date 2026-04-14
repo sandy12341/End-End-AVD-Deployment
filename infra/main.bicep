@@ -228,6 +228,9 @@ var privateEndpointSubnetId = networkMode == 'CreateNewVnet' ? network!.outputs.
 
 module hostPool 'modules/hostpool.bicep' = {
   name: 'deploy-hostpool'
+  dependsOn: [
+    network
+  ]
   params: {
     location: location
     hostPoolName: hostPoolName
@@ -283,6 +286,9 @@ module fslogix 'modules/fslogix.bicep' = if (deployFSLogix) {
 
 module monitoring 'modules/monitoring.bicep' = if (deployMonitoring) {
   name: 'deploy-monitoring'
+  dependsOn: [
+    network
+  ]
   params: {
     location: location
     workspaceName: 'log-avd-${namingPrefix}'
