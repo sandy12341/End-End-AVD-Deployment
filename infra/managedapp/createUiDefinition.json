@@ -71,6 +71,86 @@
         "label": "Instance details",
         "elements": [
           {
+            "name": "vmSizesApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/vmSizes?api-version=2024-07-01')]"
+            }
+          },
+          {
+            "name": "marketplacePublishersApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers?api-version=2024-07-01')]"
+            }
+          },
+          {
+            "name": "marketplaceOffersApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers/', steps('instanceDetails').marketplaceImagePublisher, '/artifacttypes/vmimage/offers?api-version=2024-07-01')]"
+            }
+          },
+          {
+            "name": "marketplaceSkusApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers/', steps('instanceDetails').marketplaceImagePublisher, '/artifacttypes/vmimage/offers/', steps('instanceDetails').marketplaceImageOffer, '/skus?api-version=2024-07-01')]"
+            }
+          },
+          {
+            "name": "marketplaceVersionsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers/', steps('instanceDetails').marketplaceImagePublisher, '/artifacttypes/vmimage/offers/', steps('instanceDetails').marketplaceImageOffer, '/skus/', steps('instanceDetails').marketplaceImageSku, '/versions?api-version=2024-07-01')]"
+            }
+          },
+          {
+            "name": "gallerySubscriptionsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "/subscriptions?api-version=2022-12-01"
+            }
+          },
+          {
+            "name": "galleryResourceGroupsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/resourcegroups?api-version=2022-09-01')]"
+            }
+          },
+          {
+            "name": "galleriesApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/providers/Microsoft.Compute/galleries?api-version=2024-03-03')]"
+            }
+          },
+          {
+            "name": "galleryImagesApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/resourceGroups/', steps('instanceDetails').galleryImageResourceGroupName, '/providers/Microsoft.Compute/galleries/', steps('instanceDetails').galleryName, '/images?api-version=2024-03-03')]"
+            }
+          },
+          {
+            "name": "galleryImageVersionsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/resourceGroups/', steps('instanceDetails').galleryImageResourceGroupName, '/providers/Microsoft.Compute/galleries/', steps('instanceDetails').galleryName, '/images/', steps('instanceDetails').galleryImageDefinitionName, '/versions?api-version=2024-03-03')]"
+            }
+          },
+          {
             "name": "hostPoolName",
             "type": "Microsoft.Common.TextBox",
             "label": "Host pool name",
@@ -92,11 +172,12 @@
           },
           {
             "name": "vmSize",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "VM Size",
             "defaultValue": "Standard_D2ads_v5",
             "constraints": {
-              "required": true
+              "required": true,
+              "allowedValues": "[map(steps('instanceDetails').vmSizesApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
             }
           },
           {
@@ -120,92 +201,101 @@
           },
           {
             "name": "marketplaceImagePublisher",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Marketplace publisher",
             "defaultValue": "microsoftwindowsdesktop",
             "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), map(steps('instanceDetails').marketplacePublishersApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
             "name": "marketplaceImageOffer",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Marketplace offer",
             "defaultValue": "windows-11",
             "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), map(steps('instanceDetails').marketplaceOffersApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
             "name": "marketplaceImageSku",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Marketplace SKU",
             "defaultValue": "win11-24h2-avd",
             "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), map(steps('instanceDetails').marketplaceSkusApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
             "name": "marketplaceImageVersion",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Marketplace version",
             "defaultValue": "latest",
             "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), union(parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'), map(steps('instanceDetails').marketplaceVersionsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))), parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'))]"
             }
           },
           {
             "name": "galleryImageSubscriptionId",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Gallery subscription ID",
-            "defaultValue": "",
+            "defaultValue": "[subscription().subscriptionId]",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+              "allowedValues": "[map(steps('instanceDetails').gallerySubscriptionsApi.value, (item) => parse(concat('{\"label\":\"', item.displayName, ' (', item.subscriptionId, ')\",\"value\":\"', item.subscriptionId, '\"}')))]"
             }
           },
           {
             "name": "galleryImageResourceGroupName",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Gallery resource group",
             "defaultValue": "",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), map(steps('instanceDetails').galleryResourceGroupsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
             "name": "galleryName",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Gallery name",
             "defaultValue": "",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), map(filter(steps('instanceDetails').galleriesApi.value, (item) => equals(last(take(split(item.id, '/'), 5)), steps('instanceDetails').galleryImageResourceGroupName)), (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
             "name": "galleryImageDefinitionName",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Gallery image definition",
             "defaultValue": "",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), map(steps('instanceDetails').galleryImagesApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
             "name": "galleryImageVersion",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Gallery image version",
             "defaultValue": "latest",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), union(parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'), map(steps('instanceDetails').galleryImageVersionsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))), parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'))]"
             }
           },
           {
