@@ -115,7 +115,7 @@ This is the recommended method. It requires **no tooling** — just a browser.
 1. **Click the Deploy to Azure button** from the repo README or the MVP Catalog Portal:
 
    ```
-   https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsandy12341%2FAVD-Landing-Zone%2Fmaster%2Finfra%2Fazuredeploy.json
+  https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsandy12341%2FEnd-End-AVD-Deployment%2Fmaster%2Finfra%2Fazuredeploy.json
    ```
 
 2. **Fill in the required parameters** on the Azure Portal custom deployment form:
@@ -152,7 +152,7 @@ az group create --name rg-avd-myapp-dev --location westus2
 # 2. Deploy the template (from GitHub raw URL — same as portal)
 az deployment group create \
   --resource-group rg-avd-myapp-dev \
-  --template-uri "https://raw.githubusercontent.com/sandy12341/AVD-Landing-Zone/master/infra/azuredeploy.json" \
+  --template-uri "https://raw.githubusercontent.com/sandy12341/End-End-AVD-Deployment/master/infra/azuredeploy.json" \
   --parameters avdMode='PooledDesktopAndRemoteApp' \
   --parameters deploymentPrefix='myapp' \
                environment='dev' \
