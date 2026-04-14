@@ -1,20 +1,21 @@
 # Azure Virtual Desktop + Landing Zone
 
-Production-ready Azure Virtual Desktop deployment with Landing Zone architecture. Includes validated `PersonalDesktop`, `PooledRemoteApp`, and `PooledDesktopAndRemoteApp` delivery modes, marketplace or Azure Compute Gallery session host images, FSLogix profile containers, Entra ID join, network segmentation, monitoring, and typed access assignments.
+Production-ready Azure Virtual Desktop deployment with Landing Zone architecture. Includes validated `PersonalDesktop`, `PooledRemoteApp`, and `PooledDesktopAndRemoteApp` delivery modes, marketplace or Azure Compute Gallery session host images, FSLogix profile containers, Entra ID join, brownfield or greenfield networking, monitoring, and typed access assignments.
 
 ## Deploy to Azure
 
-### One-Click Deployment with VNet/Subnet Dropdowns ⭐
+### One-Click Deployment with Brownfield/Greenfield Networking ⭐
 
-Click the button below for a guided deployment with dynamic VNet and subnet selection:
+Click the button below for a guided deployment with dynamic networking selection:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsandy12341%2FEnd-End-AVD-Deployment%2Fmaster%2Finfra%2Fmanagedapp%2Fdist%2FmainTemplate.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fsandy12341%2FEnd-End-AVD-Deployment%2Fmaster%2Finfra%2Fmanagedapp%2FcreateUiDefinition.json)
 
 **Always uses latest `master` branch.**
 **What You Get:**
 - Multi-step portal wizard (5 steps)
-- **VNet selection dropdown** — lists all VNets in subscription
-- **Subnet selection dropdown** — filtered by selected VNet  
+- **Network mode selector** — use an existing VNet or create a new spoke VNet
+- **VNet and subnet dropdowns** — lists existing VNets and subnets in your subscription
+- **Hub VNet dropdown** — peers a new spoke VNet to an existing hub VNet  
 - **Image source selection** — marketplace or Azure Compute Gallery
 - Configure host pool, session hosts, FSLogix, monitoring
 - Auto-deploy to your subscription, your resources
@@ -24,7 +25,7 @@ Click the button below for a guided deployment with dynamic VNet and subnet sele
 2. Portal opens with 5-step wizard
 3. Select subscription and resource group
 4. Basics: Host pool name, instance count, VM size
-5. Networking: Select VNet and subnets from dropdowns
+5. Networking: Choose existing VNet deployment or create a new spoke VNet and peer it to a hub
 6. AVD Config: Delivery mode (Desktop/RemoteApp/Both)  
 7. Storage & Monitoring: FSLogix and Log Analytics options
 8. Access: (Optional) User object IDs for RBAC assignment
@@ -97,11 +98,11 @@ Deploy directly from GitHub ARM template with portal form:
 
 ## Managed Application Architecture
 
-The repository includes pre-built **Azure Managed Application** infrastructure (`infra/managedapp/`) that provides a portal-driven deployment experience with dynamic VNet/subnet selection via dropdowns.
+The repository includes pre-built **Azure Managed Application** infrastructure (`infra/managedapp/`) that provides a portal-driven deployment experience with brownfield and greenfield networking options.
 
 ### Managed App Files
 
-- **`mainTemplate.bicep`** - AVD infrastructure template (accepts existing VNet/subnets)
+- **`mainTemplate.bicep`** - AVD infrastructure template (uses an existing VNet or creates a new spoke VNet with hub peering)
 - **`createUiDefinition.json`** - Portal wizard UI (5-step wizard with ArmApiControl dropdowns)
 - **`deployDefinition.bicep`** - Infrastructure-as-code for publishing the definition
 - **`dist/app.zip`** - Complete deployment package (hosted as GitHub release asset)
@@ -113,7 +114,8 @@ The repository includes pre-built **Azure Managed Application** infrastructure (
 3. **Portal populates dropdowns**:
    - Queries their subscriptions via ArmApiControl
    - Lists VNets in selected subscription
-   - Lists subnets in selected VNet
+  - Lists subnets in the selected existing VNet
+  - Lists hub VNets for greenfield spoke peering
 4. **User selects or enters**:
    - Host pool name, instance count, VM size
    - AVD delivery mode (PersonalDesktop / PooledRemoteApp)
@@ -257,7 +259,7 @@ No cross-tenant permissions needed — each user manages their own deployed reso
 - **Host Pool**: Pooled (BreadthFirst) or Personal, with Start VM on Connect
 - **Session Hosts**: Windows 11 24H2 Multi-Session, Entra ID joined, System Assigned Managed Identity
 - **FSLogix**: Azure Files share for user profile containers (Entra ID Kerberos auth, VNet-restricted)
-- **Networking**: Uses an existing VNet and existing subnets selected at deployment time through the portal wizard
+- **Networking**: Supports brownfield deployments into an existing VNet or greenfield deployments that create a spoke VNet and peer it to a selected hub VNet
 - **Monitoring**: Log Analytics workspace for diagnostics
 - **Application Publishing**: Desktop app group, RemoteApp app group, or both from the same template
 - **Access Assignment**: Use `desktopAccessAssignments` and `remoteAppAccessAssignments` for typed `User`, `Group`, or `ServicePrincipal` assignment scopes. The legacy `avdUserObjectIds` input is still supported as a compatibility shortcut for shared user assignments.

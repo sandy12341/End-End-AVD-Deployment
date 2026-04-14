@@ -31,9 +31,17 @@
     "deployFSLogix": { "value": true },
     "deployMonitoring": { "value": true },
     "remoteApps": { "value": [] },
+    "networkMode": { "value": "UseExistingVnet" },
     "existingVnetName": { "value": "existing-vnet-name" },
     "existingVnetResourceGroupName": { "value": "existing-vnet-resource-group" },
     "sessionHostSubnetName": { "value": "existing-sessionhost-subnet" },
-    "privateEndpointSubnetName": { "value": "existing-privateendpoint-subnet" }
+    "privateEndpointSubnetName": { "value": "existing-privateendpoint-subnet" },
+    "newVnetName": { "value": "" },
+    "newVnetAddressPrefix": { "value": "10.20.0.0/16" },
+    "newSessionHostSubnetName": { "value": "snet-avd-sessionhosts" },
+    "newSessionHostSubnetPrefix": { "value": "10.20.1.0/24" },
+    "newPrivateEndpointSubnetName": { "value": "snet-avd-privateendpoints" },
+    "newPrivateEndpointSubnetPrefix": { "value": "10.20.2.0/24" },
+    "hubVnetResourceId": { "value": "" }
   }
 }

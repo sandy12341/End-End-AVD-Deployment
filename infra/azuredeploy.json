@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.30.3.12046",
-      "templateHash": "9049047544079127814"
+      "templateHash": "10162838715867829772"
     }
   },
   "parameters": {
@@ -223,8 +223,20 @@
         "description": "Deploy monitoring (Log Analytics)"
       }
     },
+    "networkMode": {
+      "type": "string",
+      "defaultValue": "UseExistingVnet",
+      "allowedValues": [
+        "UseExistingVnet",
+        "CreateNewVnet"
+      ],
+      "metadata": {
+        "description": "Choose whether to use an existing VNet or create a new spoke VNet for the deployment."
+      }
+    },
     "existingVnetName": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
         "description": "Name of the existing virtual network to use"
       }
@@ -238,14 +250,65 @@
     },
     "sessionHostSubnetName": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
         "description": "Name of the existing subnet for session hosts"
       }
     },
     "privateEndpointSubnetName": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
         "description": "Name of the existing subnet reserved for private endpoints"
+      }
+    },
+    "newVnetName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of the new spoke virtual network to create when networkMode is CreateNewVnet."
+      }
+    },
+    "newVnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.20.0.0/16",
+      "metadata": {
+        "description": "Address prefix for the new spoke virtual network when networkMode is CreateNewVnet."
+      }
+    },
+    "newSessionHostSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-avd-sessionhosts",
+      "metadata": {
+        "description": "Name of the session host subnet to create when networkMode is CreateNewVnet."
+      }
+    },
+    "newSessionHostSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.20.1.0/24",
+      "metadata": {
+        "description": "Address prefix for the session host subnet when networkMode is CreateNewVnet."
+      }
+    },
+    "newPrivateEndpointSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-avd-privateendpoints",
+      "metadata": {
+        "description": "Name of the private endpoint subnet to create when networkMode is CreateNewVnet."
+      }
+    },
+    "newPrivateEndpointSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.20.2.0/24",
+      "metadata": {
+        "description": "Address prefix for the private endpoint subnet when networkMode is CreateNewVnet."
+      }
+    },
+    "hubVnetResourceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource ID of the existing hub virtual network to peer with when networkMode is CreateNewVnet."
       }
     },
     "hostPoolName": {
@@ -311,6 +374,7 @@
     "effectiveHostPoolType": "[if(equals(variables('effectiveAvdMode'), 'PersonalDesktop'), 'Personal', 'Pooled')]",
     "publishDesktop": "[or(or(equals(variables('effectiveAvdMode'), 'PersonalDesktop'), equals(variables('effectiveAvdMode'), 'PooledDesktop')), equals(variables('effectiveAvdMode'), 'PooledDesktopAndRemoteApp'))]",
     "publishRemoteApps": "[or(equals(variables('effectiveAvdMode'), 'PooledRemoteApp'), equals(variables('effectiveAvdMode'), 'PooledDesktopAndRemoteApp'))]",
+    "effectiveExistingVnetResourceGroupName": "[if(empty(parameters('existingVnetResourceGroupName')), resourceGroup().name, parameters('existingVnetResourceGroupName'))]",
     "desktopAppGroupName": "[format('dag-avd-{0}', variables('namingPrefix'))]",
     "remoteAppGroupName": "[format('rag-avd-{0}', variables('namingPrefix'))]",
     "desktopEffectiveAssignments": "[union(parameters('desktopAccessAssignments'), if(variables('publishDesktop'), variables('legacyAccessAssignments'), createArray()))]",
@@ -375,6 +439,348 @@
         "principalId": "[string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalId)]",
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'fb879df8-f326-4884-b1cf-06f3ad86be52')]",
         "principalType": "[string(variables('vmLoginEffectiveAssignments')[copyIndex()].principalType)]"
+      }
+    },
+    {
+      "condition": "[equals(parameters('networkMode'), 'CreateNewVnet')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-network",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetName": {
+            "value": "[parameters('newVnetName')]"
+          },
+          "vnetAddressPrefix": {
+            "value": "[parameters('newVnetAddressPrefix')]"
+          },
+          "sessionHostSubnetName": {
+            "value": "[parameters('newSessionHostSubnetName')]"
+          },
+          "sessionHostSubnetPrefix": {
+            "value": "[parameters('newSessionHostSubnetPrefix')]"
+          },
+          "privateEndpointSubnetName": {
+            "value": "[parameters('newPrivateEndpointSubnetName')]"
+          },
+          "privateEndpointSubnetPrefix": {
+            "value": "[parameters('newPrivateEndpointSubnetPrefix')]"
+          },
+          "hubVnetResourceId": {
+            "value": "[parameters('hubVnetResourceId')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.30.3.12046",
+              "templateHash": "3838883416692142405"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for the VNet"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the VNet"
+              }
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.20.0.0/16",
+              "metadata": {
+                "description": "VNet address prefix"
+              }
+            },
+            "sessionHostSubnetName": {
+              "type": "string",
+              "defaultValue": "snet-avd-sessionhosts",
+              "metadata": {
+                "description": "Session hosts subnet name"
+              }
+            },
+            "sessionHostSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.20.1.0/24",
+              "metadata": {
+                "description": "Session hosts subnet prefix"
+              }
+            },
+            "privateEndpointSubnetName": {
+              "type": "string",
+              "defaultValue": "snet-avd-privateendpoints",
+              "metadata": {
+                "description": "Private endpoints subnet name"
+              }
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.20.2.0/24",
+              "metadata": {
+                "description": "Private endpoints subnet prefix"
+              }
+            },
+            "hubVnetResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional resource ID of the hub virtual network to peer with the new spoke VNet."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags for all resources"
+              }
+            }
+          },
+          "variables": {
+            "hubVnetSegments": "[split(parameters('hubVnetResourceId'), '/')]",
+            "hubVnetResourceGroupName": "[if(not(empty(parameters('hubVnetResourceId'))), variables('hubVnetSegments')[4], '')]",
+            "hubVnetName": "[if(not(empty(parameters('hubVnetResourceId'))), variables('hubVnetSegments')[8], '')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}-natgw-pip', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/natGateways",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}-natgw', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIpAddresses": [
+                  {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-natgw-pip', parameters('vnetName')))]"
+                  }
+                ],
+                "idleTimeoutInMinutes": 4
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-natgw-pip', parameters('vnetName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-01-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[parameters('sessionHostSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('sessionHostSubnetPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-avd-sessionhosts')]"
+                      },
+                      "natGateway": {
+                        "id": "[resourceId('Microsoft.Network/natGateways', format('{0}-natgw', parameters('vnetName')))]"
+                      },
+                      "serviceEndpoints": [
+                        {
+                          "service": "Microsoft.Storage"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "[parameters('privateEndpointSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/natGateways', format('{0}-natgw', parameters('vnetName')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-avd-sessionhosts')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2024-01-01",
+              "name": "nsg-avd-sessionhosts",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowRDP",
+                    "properties": {
+                      "priority": 1000,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "3389"
+                    }
+                  },
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "priority": 4096,
+                      "direction": "Inbound",
+                      "access": "Deny",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "condition": "[not(empty(parameters('hubVnetResourceId')))]",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', parameters('vnetName'), format('{0}-to-{1}', parameters('vnetName'), variables('hubVnetName')))]",
+              "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": true,
+                "allowGatewayTransit": false,
+                "useRemoteGateways": false,
+                "remoteVirtualNetwork": {
+                  "id": "[parameters('hubVnetResourceId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('hubVnetResourceId')))]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}-hub-peering', parameters('vnetName'))]",
+              "resourceGroup": "[variables('hubVnetResourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "hubVnetName": {
+                    "value": "[variables('hubVnetName')]"
+                  },
+                  "spokeVnetName": {
+                    "value": "[parameters('vnetName')]"
+                  },
+                  "spokeVnetResourceId": {
+                    "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.30.3.12046",
+                      "templateHash": "18232017071347321678"
+                    }
+                  },
+                  "parameters": {
+                    "hubVnetName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the existing hub virtual network that will receive the reverse peering connection."
+                      }
+                    },
+                    "spokeVnetName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the spoke virtual network created for the deployment."
+                      }
+                    },
+                    "spokeVnetResourceId": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Resource ID of the spoke virtual network created for the deployment."
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                      "apiVersion": "2024-01-01",
+                      "name": "[format('{0}/{1}', parameters('hubVnetName'), format('{0}-to-{1}', parameters('hubVnetName'), parameters('spokeVnetName')))]",
+                      "properties": {
+                        "allowVirtualNetworkAccess": true,
+                        "allowForwardedTraffic": true,
+                        "allowGatewayTransit": false,
+                        "useRemoteGateways": false,
+                        "remoteVirtualNetwork": {
+                          "id": "[parameters('spokeVnetResourceId')]"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "sessionHostSubnetId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-01-01').subnets[0].id]"
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-01-01').subnets[1].id]"
+            }
+          }
+        }
       }
     },
     {
@@ -695,9 +1101,7 @@
           "imageReference": {
             "value": "[variables('sessionHostImageReference')]"
           },
-          "subnetId": {
-            "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('existingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))]"
-          },
+          "subnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.sessionHostSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))))]",
           "hostPoolName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.hostPoolName.value]"
           },
@@ -1097,7 +1501,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'deploy-hostpool')]"
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-hostpool')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-network')]"
       ]
     },
     {
@@ -1117,9 +1522,7 @@
           "storageAccountName": {
             "value": "[parameters('storageAccountName')]"
           },
-          "sessionHostSubnetId": {
-            "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('existingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))]"
-          },
+          "sessionHostSubnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.sessionHostSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))))]",
           "tags": {
             "value": "[variables('tags')]"
           }
@@ -1335,7 +1738,10 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-network')]"
+      ]
     },
     {
       "condition": "[parameters('deployMonitoring')]",
@@ -1448,11 +1854,11 @@
     },
     "vnetId": {
       "type": "string",
-      "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('existingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))]"
+      "value": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.vnetId.value, extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName')))]"
     },
     "privateEndpointSubnetId": {
       "type": "string",
-      "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('existingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName'))]"
+      "value": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.privateEndpointSubnetId.value, extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName')))]"
     },
     "sessionHostVmNames": {
       "type": "array",

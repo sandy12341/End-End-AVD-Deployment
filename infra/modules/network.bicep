@@ -7,14 +7,27 @@ param vnetName string
 @description('VNet address prefix')
 param vnetAddressPrefix string = '10.20.0.0/16'
 
+@description('Session hosts subnet name')
+param sessionHostSubnetName string = 'snet-avd-sessionhosts'
+
 @description('Session hosts subnet prefix')
 param sessionHostSubnetPrefix string = '10.20.1.0/24'
+
+@description('Private endpoints subnet name')
+param privateEndpointSubnetName string = 'snet-avd-privateendpoints'
 
 @description('Private endpoints subnet prefix')
 param privateEndpointSubnetPrefix string = '10.20.2.0/24'
 
+@description('Optional resource ID of the hub virtual network to peer with the new spoke VNet.')
+param hubVnetResourceId string = ''
+
 @description('Tags for all resources')
 param tags object = {}
+
+var hubVnetSegments = split(hubVnetResourceId, '/')
+var hubVnetResourceGroupName = !empty(hubVnetResourceId) ? hubVnetSegments[4] : ''
+var hubVnetName = !empty(hubVnetResourceId) ? hubVnetSegments[8] : ''
 
 resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2024-01-01' = {
   name: '${vnetName}-natgw-pip'
@@ -53,7 +66,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
     }
     subnets: [
       {
-        name: 'snet-avd-sessionhosts'
+        name: sessionHostSubnetName
         properties: {
           addressPrefix: sessionHostSubnetPrefix
           networkSecurityGroup: {
@@ -70,7 +83,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
         }
       }
       {
-        name: 'snet-avd-privateendpoints'
+        name: privateEndpointSubnetName
         properties: {
           addressPrefix: privateEndpointSubnetPrefix
         }
@@ -112,6 +125,30 @@ resource nsgSessionHosts 'Microsoft.Network/networkSecurityGroups@2024-01-01' = 
         }
       }
     ]
+  }
+}
+
+resource spokeToHubPeering 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2024-01-01' = if (!empty(hubVnetResourceId)) {
+  parent: vnet
+  name: '${vnet.name}-to-${hubVnetName}'
+  properties: {
+    allowVirtualNetworkAccess: true
+    allowForwardedTraffic: true
+    allowGatewayTransit: false
+    useRemoteGateways: false
+    remoteVirtualNetwork: {
+      id: hubVnetResourceId
+    }
+  }
+}
+
+module hubPeering './hubPeering.bicep' = if (!empty(hubVnetResourceId)) {
+  name: '${vnetName}-hub-peering'
+  scope: resourceGroup(hubVnetResourceGroupName)
+  params: {
+    hubVnetName: hubVnetName
+    spokeVnetName: vnet.name
+    spokeVnetResourceId: vnet.id
   }
 }
 

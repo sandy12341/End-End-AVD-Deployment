@@ -93,17 +93,42 @@ param storageAccountName string
 @description('Deploy monitoring (Log Analytics)')
 param deployMonitoring bool = true
 
+@description('Choose whether to use an existing VNet or create a new spoke VNet for the deployment.')
+@allowed(['UseExistingVnet', 'CreateNewVnet'])
+param networkMode string = 'UseExistingVnet'
+
 @description('Name of the existing virtual network to use')
-param existingVnetName string
+param existingVnetName string = ''
 
 @description('Resource group name that contains the existing virtual network')
 param existingVnetResourceGroupName string = resourceGroup().name
 
 @description('Name of the existing subnet for session hosts')
-param sessionHostSubnetName string
+param sessionHostSubnetName string = ''
 
 @description('Name of the existing subnet reserved for private endpoints')
-param privateEndpointSubnetName string
+param privateEndpointSubnetName string = ''
+
+@description('Name of the new spoke virtual network to create when networkMode is CreateNewVnet.')
+param newVnetName string = ''
+
+@description('Address prefix for the new spoke virtual network when networkMode is CreateNewVnet.')
+param newVnetAddressPrefix string = '10.20.0.0/16'
+
+@description('Name of the session host subnet to create when networkMode is CreateNewVnet.')
+param newSessionHostSubnetName string = 'snet-avd-sessionhosts'
+
+@description('Address prefix for the session host subnet when networkMode is CreateNewVnet.')
+param newSessionHostSubnetPrefix string = '10.20.1.0/24'
+
+@description('Name of the private endpoint subnet to create when networkMode is CreateNewVnet.')
+param newPrivateEndpointSubnetName string = 'snet-avd-privateendpoints'
+
+@description('Address prefix for the private endpoint subnet when networkMode is CreateNewVnet.')
+param newPrivateEndpointSubnetPrefix string = '10.20.2.0/24'
+
+@description('Resource ID of the existing hub virtual network to peer with when networkMode is CreateNewVnet.')
+param hubVnetResourceId string = ''
 
 @description('Host pool name')
 param hostPoolName string
@@ -128,11 +153,10 @@ var effectiveAvdMode = empty(avdMode) ? (hostPoolType == 'Personal' ? 'PersonalD
 var effectiveHostPoolType = effectiveAvdMode == 'PersonalDesktop' ? 'Personal' : 'Pooled'
 var publishDesktop = effectiveAvdMode == 'PersonalDesktop' || effectiveAvdMode == 'PooledDesktop' || effectiveAvdMode == 'PooledDesktopAndRemoteApp'
 var publishRemoteApps = effectiveAvdMode == 'PooledRemoteApp' || effectiveAvdMode == 'PooledDesktopAndRemoteApp'
+var effectiveExistingVnetResourceGroupName = empty(existingVnetResourceGroupName) ? resourceGroup().name : existingVnetResourceGroupName
 var desktopAppGroupName = 'dag-avd-${namingPrefix}'
 var remoteAppGroupName = 'rag-avd-${namingPrefix}'
-var existingVnetId = resourceId(existingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks', existingVnetName)
-var sessionHostSubnetId = resourceId(existingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', existingVnetName, sessionHostSubnetName)
-var privateEndpointSubnetId = resourceId(existingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', existingVnetName, privateEndpointSubnetName)
+var existingVnetId = resourceId(effectiveExistingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks', existingVnetName)
 var normalizedAvdUserObjectIds = [for oid in split(replace(replace(avdUserObjectIds, '\r\n', ','), '\n', ','), ','): trim(oid)]
 var legacyAccessAssignments = [for oid in normalizedAvdUserObjectIds: {
   principalId: oid
@@ -156,6 +180,28 @@ var tags = {
   Project: 'AVD-Landing-Zone'
   DeployedBy: 'Bicep'
 }
+
+module network '../modules/network.bicep' = if (networkMode == 'CreateNewVnet') {
+  name: 'deploy-network'
+  params: {
+    location: location
+    vnetName: newVnetName
+    vnetAddressPrefix: newVnetAddressPrefix
+    sessionHostSubnetName: newSessionHostSubnetName
+    sessionHostSubnetPrefix: newSessionHostSubnetPrefix
+    privateEndpointSubnetName: newPrivateEndpointSubnetName
+    privateEndpointSubnetPrefix: newPrivateEndpointSubnetPrefix
+    hubVnetResourceId: hubVnetResourceId
+    tags: tags
+  }
+}
+
+var sessionHostSubnetId = networkMode == 'CreateNewVnet'
+  ? network!.outputs.sessionHostSubnetId
+  : resourceId(effectiveExistingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', existingVnetName, sessionHostSubnetName)
+var privateEndpointSubnetId = networkMode == 'CreateNewVnet'
+  ? network!.outputs.privateEndpointSubnetId
+  : resourceId(effectiveExistingVnetResourceGroupName, 'Microsoft.Network/virtualNetworks/subnets', existingVnetName, privateEndpointSubnetName)
 
 module hostPool '../modules/hostpool.bicep' = {
   name: 'deploy-hostpool'

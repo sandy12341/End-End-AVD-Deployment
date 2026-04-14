@@ -101,17 +101,42 @@ param storageAccountName string
 @description('Deploy monitoring (Log Analytics)')
 param deployMonitoring bool = true
 
+@description('Choose whether to use an existing VNet or create a new spoke VNet for the deployment.')
+@allowed(['UseExistingVnet', 'CreateNewVnet'])
+param networkMode string = 'UseExistingVnet'
+
 @description('Name of the existing virtual network to use')
-param existingVnetName string
+param existingVnetName string = ''
 
 @description('Resource group name that contains the existing virtual network')
 param existingVnetResourceGroupName string = resourceGroup().name
 
 @description('Name of the existing subnet for session hosts')
-param sessionHostSubnetName string
+param sessionHostSubnetName string = ''
 
 @description('Name of the existing subnet reserved for private endpoints')
-param privateEndpointSubnetName string
+param privateEndpointSubnetName string = ''
+
+@description('Name of the new spoke virtual network to create when networkMode is CreateNewVnet.')
+param newVnetName string = ''
+
+@description('Address prefix for the new spoke virtual network when networkMode is CreateNewVnet.')
+param newVnetAddressPrefix string = '10.20.0.0/16'
+
+@description('Name of the session host subnet to create when networkMode is CreateNewVnet.')
+param newSessionHostSubnetName string = 'snet-avd-sessionhosts'
+
+@description('Address prefix for the session host subnet when networkMode is CreateNewVnet.')
+param newSessionHostSubnetPrefix string = '10.20.1.0/24'
+
+@description('Name of the private endpoint subnet to create when networkMode is CreateNewVnet.')
+param newPrivateEndpointSubnetName string = 'snet-avd-privateendpoints'
+
+@description('Address prefix for the private endpoint subnet when networkMode is CreateNewVnet.')
+param newPrivateEndpointSubnetPrefix string = '10.20.2.0/24'
+
+@description('Resource ID of the existing hub virtual network to peer with when networkMode is CreateNewVnet.')
+param hubVnetResourceId string = ''
 
 @description('Host pool name')
 param hostPoolName string
@@ -138,6 +163,7 @@ var effectiveAvdMode = empty(avdMode) ? (hostPoolType == 'Personal' ? 'PersonalD
 var effectiveHostPoolType = effectiveAvdMode == 'PersonalDesktop' ? 'Personal' : 'Pooled'
 var publishDesktop = effectiveAvdMode == 'PersonalDesktop' || effectiveAvdMode == 'PooledDesktop' || effectiveAvdMode == 'PooledDesktopAndRemoteApp'
 var publishRemoteApps = effectiveAvdMode == 'PooledRemoteApp' || effectiveAvdMode == 'PooledDesktopAndRemoteApp'
+var effectiveExistingVnetResourceGroupName = empty(existingVnetResourceGroupName) ? resourceGroup().name : existingVnetResourceGroupName
 var desktopAppGroupName = 'dag-avd-${namingPrefix}'
 var remoteAppGroupName = 'rag-avd-${namingPrefix}'
 var normalizedAvdUserObjectIds = [for oid in split(replace(replace(avdUserObjectIds, '\r\n', ','), '\n', ','), ','): trim(oid)]
@@ -164,20 +190,39 @@ var tags = {
   DeployedBy: 'Bicep'
 }
 
-resource existingVnet 'Microsoft.Network/virtualNetworks@2023-09-01' existing = {
-  name: existingVnetName
-  scope: resourceGroup(existingVnetResourceGroupName)
+module network 'modules/network.bicep' = if (networkMode == 'CreateNewVnet') {
+  name: 'deploy-network'
+  params: {
+    location: location
+    vnetName: newVnetName
+    vnetAddressPrefix: newVnetAddressPrefix
+    sessionHostSubnetName: newSessionHostSubnetName
+    sessionHostSubnetPrefix: newSessionHostSubnetPrefix
+    privateEndpointSubnetName: newPrivateEndpointSubnetName
+    privateEndpointSubnetPrefix: newPrivateEndpointSubnetPrefix
+    hubVnetResourceId: hubVnetResourceId
+    tags: tags
+  }
 }
 
-resource sessionHostSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-09-01' existing = {
+resource existingVnet 'Microsoft.Network/virtualNetworks@2023-09-01' existing = if (networkMode == 'UseExistingVnet') {
+  name: existingVnetName
+  scope: resourceGroup(effectiveExistingVnetResourceGroupName)
+}
+
+resource existingSessionHostSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-09-01' existing = if (networkMode == 'UseExistingVnet') {
   parent: existingVnet
   name: sessionHostSubnetName
 }
 
-resource privateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-09-01' existing = {
+resource existingPrivateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-09-01' existing = if (networkMode == 'UseExistingVnet') {
   parent: existingVnet
   name: privateEndpointSubnetName
 }
+
+var vnetId = networkMode == 'CreateNewVnet' ? network!.outputs.vnetId : existingVnet.id
+var sessionHostSubnetId = networkMode == 'CreateNewVnet' ? network!.outputs.sessionHostSubnetId : existingSessionHostSubnet.id
+var privateEndpointSubnetId = networkMode == 'CreateNewVnet' ? network!.outputs.privateEndpointSubnetId : existingPrivateEndpointSubnet.id
 
 // ── Host Pool + Workspace ──
 
@@ -207,7 +252,7 @@ module sessionHosts 'modules/sessionhosts.bicep' = {
     sessionHostCount: sessionHostCount
     vmSize: vmSize
     imageReference: sessionHostImageReference
-    subnetId: sessionHostSubnet.id
+    subnetId: sessionHostSubnetId
     hostPoolName: hostPool.outputs.hostPoolName
     adminUsername: adminUsername
     adminPassword: adminPassword
@@ -229,7 +274,7 @@ module fslogix 'modules/fslogix.bicep' = if (deployFSLogix) {
   params: {
     location: location
     storageAccountName: storageAccountName
-    sessionHostSubnetId: sessionHostSubnet.id
+    sessionHostSubnetId: sessionHostSubnetId
     tags: tags
   }
 }
@@ -300,8 +345,8 @@ output workspaceId string = hostPool.outputs.workspaceId
 output desktopAppGroupId string = hostPool.outputs.desktopAppGroupId
 output remoteAppGroupId string = hostPool.outputs.remoteAppGroupId
 output publishedAppGroupIds array = hostPool.outputs.publishedAppGroupIds
-output vnetId string = existingVnet.id
-output privateEndpointSubnetId string = privateEndpointSubnet.id
+output vnetId string = vnetId
+output privateEndpointSubnetId string = privateEndpointSubnetId
 output sessionHostVmNames array = sessionHosts.outputs.vmNames
 output fslogixStorageAccount string = deployFSLogix ? fslogix!.outputs.storageAccountName : 'N/A'
 output logAnalyticsWorkspace string = deployMonitoring ? monitoring!.outputs.workspaceName : 'N/A'
