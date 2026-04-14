@@ -156,6 +156,7 @@
             "type": "Microsoft.Common.DropDown",
             "label": "VM Size",
             "defaultValue": "Standard_D2ads_v5",
+            "filter": true,
             "constraints": {
               "required": true,
               "allowedValues": "[map(steps('instanceDetails').vmSizesApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
@@ -181,14 +182,77 @@
             }
           },
           {
+            "name": "avdCompatibleMarketplaceOs",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Compatible OS",
+            "toolTip": "Curated Azure Virtual Desktop-supported operating systems based on Microsoft Learn prerequisites.",
+            "defaultValue": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}",
+            "filter": true,
+            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+              "allowedValues": [
+                {
+                  "label": "Windows 11 Enterprise multi-session + Microsoft 365 Apps",
+                  "value": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows 11 Enterprise multi-session",
+                  "value": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"windows-11\",\"sku\":\"win11-24h2-avd\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows 11 Enterprise",
+                  "value": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"windows-11\",\"sku\":\"win11-24h2-ent\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows 10 Enterprise multi-session + Microsoft 365 Apps",
+                  "value": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win10-22h2-avd-m365\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows 10 Enterprise multi-session",
+                  "value": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"Windows-10\",\"sku\":\"win10-22h2-avd\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows 10 Enterprise",
+                  "value": "{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"Windows-10\",\"sku\":\"win10-22h2-ent\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows Server 2025",
+                  "value": "{\"publisher\":\"MicrosoftWindowsServer\",\"offer\":\"WindowsServer\",\"sku\":\"2025-datacenter\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows Server 2022",
+                  "value": "{\"publisher\":\"MicrosoftWindowsServer\",\"offer\":\"windowsserver2022\",\"sku\":\"2022-datacenter\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows Server 2019",
+                  "value": "{\"publisher\":\"MicrosoftWindowsServer\",\"offer\":\"WindowsServer\",\"sku\":\"2019-Datacenter\",\"version\":\"latest\"}"
+                },
+                {
+                  "label": "Windows Server 2016",
+                  "value": "{\"publisher\":\"MicrosoftWindowsServer\",\"offer\":\"WindowsServer\",\"sku\":\"2016-Datacenter\",\"version\":\"latest\"}"
+                }
+              ]
+            }
+          },
+          {
+            "name": "showAdvancedMarketplaceImageFields",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Show advanced Marketplace image fields",
+            "defaultValue": false,
+            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "toolTip": "Enable this only if you want to browse the full Marketplace catalog instead of using the curated AVD-supported OS list."
+          },
+          {
             "name": "marketplaceImagePublisher",
             "type": "Microsoft.Common.DropDown",
             "label": "Marketplace publisher",
             "defaultValue": "microsoftwindowsdesktop",
-            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "filter": true,
+            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), map(steps('instanceDetails').marketplacePublishersApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
+              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), map(steps('instanceDetails').marketplacePublishersApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
@@ -196,10 +260,11 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Marketplace offer",
             "defaultValue": "windows-11",
-            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "filter": true,
+            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), map(steps('instanceDetails').marketplaceOffersApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
+              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), map(steps('instanceDetails').marketplaceOffersApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
@@ -207,10 +272,11 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Marketplace SKU",
             "defaultValue": "win11-24h2-avd",
-            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "filter": true,
+            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), map(steps('instanceDetails').marketplaceSkusApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
+              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), map(steps('instanceDetails').marketplaceSkusApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
             }
           },
           {
@@ -218,10 +284,11 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Marketplace version",
             "defaultValue": "latest",
-            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
+            "filter": true,
+            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'Marketplace'), union(parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'), map(steps('instanceDetails').marketplaceVersionsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))), parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
+              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), union(parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'), map(steps('instanceDetails').marketplaceVersionsApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))), parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'))]"
             }
           },
           {
@@ -229,6 +296,7 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Gallery subscription ID",
             "defaultValue": "[subscription().subscriptionId]",
+            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
@@ -240,6 +308,7 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Gallery resource group",
             "defaultValue": "",
+            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
@@ -251,6 +320,7 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Gallery name",
             "defaultValue": "",
+            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
@@ -262,6 +332,7 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Gallery image definition",
             "defaultValue": "",
+            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
@@ -273,6 +344,7 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Gallery image version",
             "defaultValue": "latest",
+            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
@@ -486,10 +558,10 @@
       "sessionHostCount": "[steps('instanceDetails').sessionHostCount]",
       "vmSize": "[steps('instanceDetails').vmSize]",
       "imageSource": "[steps('instanceDetails').imageSource]",
-      "marketplaceImagePublisher": "[steps('instanceDetails').marketplaceImagePublisher]",
-      "marketplaceImageOffer": "[steps('instanceDetails').marketplaceImageOffer]",
-      "marketplaceImageSku": "[steps('instanceDetails').marketplaceImageSku]",
-      "marketplaceImageVersion": "[steps('instanceDetails').marketplaceImageVersion]",
+      "marketplaceImagePublisher": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(steps('instanceDetails').avdCompatibleMarketplaceOs).publisher, steps('instanceDetails').marketplaceImagePublisher)]",
+      "marketplaceImageOffer": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(steps('instanceDetails').avdCompatibleMarketplaceOs).offer, steps('instanceDetails').marketplaceImageOffer)]",
+      "marketplaceImageSku": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(steps('instanceDetails').avdCompatibleMarketplaceOs).sku, steps('instanceDetails').marketplaceImageSku)]",
+      "marketplaceImageVersion": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(steps('instanceDetails').avdCompatibleMarketplaceOs).version, steps('instanceDetails').marketplaceImageVersion)]",
       "galleryImageSubscriptionId": "[if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId)]",
       "galleryImageResourceGroupName": "[steps('instanceDetails').galleryImageResourceGroupName]",
       "galleryName": "[steps('instanceDetails').galleryName]",
