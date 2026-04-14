@@ -513,27 +513,59 @@
             }
           },
           {
-            "name": "desktopAccessAssignmentsJson",
+            "name": "desktopUserObjectIds",
             "type": "Microsoft.Common.TextBox",
-            "label": "Desktop access assignments (JSON array)",
-            "defaultValue": "[]",
+            "label": "Desktop user object IDs",
+            "defaultValue": "",
             "multiLine": true,
             "visible": "[or(equals(steps('instanceDetails').avdMode, ''), equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Optional. JSON array of objects with principalId and principalType. Example: [{\"principalId\":\"<guid>\",\"principalType\":\"User\"}]",
+            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra user object IDs.",
             "constraints": {
-              "required": false
+              "required": false,
+              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
+              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
             }
           },
           {
-            "name": "remoteAppAccessAssignmentsJson",
+            "name": "desktopGroupObjectIds",
             "type": "Microsoft.Common.TextBox",
-            "label": "RemoteApp access assignments (JSON array)",
-            "defaultValue": "[]",
+            "label": "Desktop group object IDs",
+            "defaultValue": "",
+            "multiLine": true,
+            "visible": "[or(equals(steps('instanceDetails').avdMode, ''), equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
+            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra group object IDs.",
+            "constraints": {
+              "required": false,
+              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
+              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
+            }
+          },
+          {
+            "name": "remoteAppUserObjectIds",
+            "type": "Microsoft.Common.TextBox",
+            "label": "RemoteApp user object IDs",
+            "defaultValue": "",
             "multiLine": true,
             "visible": "[or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Optional. JSON array of objects with principalId and principalType. Example: [{\"principalId\":\"<guid>\",\"principalType\":\"Group\"}]",
+            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra user object IDs.",
             "constraints": {
-              "required": false
+              "required": false,
+              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
+              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
+            }
+          },
+          {
+            "name": "remoteAppGroupObjectIds",
+            "type": "Microsoft.Common.TextBox",
+            "label": "RemoteApp group object IDs",
+            "defaultValue": "",
+            "multiLine": true,
+            "visible": "[or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
+            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra group object IDs.",
+            "constraints": {
+              "required": false,
+              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
+              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
             }
           },
           {
@@ -580,8 +612,8 @@
       "storageAccountName": "[steps('storageMonitoring').storageAccountName]",
       "deployMonitoring": "[steps('storageMonitoring').deployMonitoring]",
       "avdUserObjectIds": "[steps('access').avdUserObjectIds]",
-      "desktopAccessAssignments": "[if(empty(steps('access').desktopAccessAssignmentsJson), parse('[]'), parse(steps('access').desktopAccessAssignmentsJson))]",
-      "remoteAppAccessAssignments": "[if(empty(steps('access').remoteAppAccessAssignmentsJson), parse('[]'), parse(steps('access').remoteAppAccessAssignmentsJson))]",
+      "desktopAccessAssignments": "[union(map(filter(split(replace(replace(steps('access').desktopUserObjectIds, '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(trim(item)))), (item) => parse(concat('{\"principalId\":\"', trim(item), '\",\"principalType\":\"User\"}'))), map(filter(split(replace(replace(steps('access').desktopGroupObjectIds, '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(trim(item)))), (item) => parse(concat('{\"principalId\":\"', trim(item), '\",\"principalType\":\"Group\"}'))))]",
+      "remoteAppAccessAssignments": "[union(map(filter(split(replace(replace(steps('access').remoteAppUserObjectIds, '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(trim(item)))), (item) => parse(concat('{\"principalId\":\"', trim(item), '\",\"principalType\":\"User\"}'))), map(filter(split(replace(replace(steps('access').remoteAppGroupObjectIds, '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(trim(item)))), (item) => parse(concat('{\"principalId\":\"', trim(item), '\",\"principalType\":\"Group\"}'))))]",
       "remoteApps": "[if(or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp')), parse(steps('access').remoteAppsJson), parse('[]'))]"
     }
   }
