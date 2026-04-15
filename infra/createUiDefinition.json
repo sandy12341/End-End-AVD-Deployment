@@ -221,52 +221,35 @@
             }
           },
           {
-            "name": "galleryImageSubscriptionId",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Gallery subscription ID",
-            "defaultValue": "",
-            "toolTip": "Leave blank to use the deployment subscription. Enter a GUID to target a different subscription.",
+            "name": "galleryPicker",
+            "type": "Microsoft.Solutions.ResourceSelector",
+            "label": "Azure Compute Gallery",
+            "resourceType": "Microsoft.Compute/galleries",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "toolTip": "Select an existing Azure Compute Gallery. Use the subscription selector in the picker to browse across subscriptions. The default view shows galleries in the subscription selected on the Basics tab.",
             "constraints": {
-              "required": false,
-              "regex": "^$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-              "validationMessage": "Leave blank or enter a valid subscription GUID."
-            }
+              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]"
+            },
+            "options": {}
           },
           {
-            "name": "galleryImageResourceGroupName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Gallery resource group",
-            "defaultValue": "",
-            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-            "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "regex": "^[A-Za-z0-9._()-]{1,90}$",
-              "validationMessage": "Enter the resource group name that contains the Compute Gallery."
-            }
-          },
-          {
-            "name": "galleryName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Gallery name",
-            "defaultValue": "",
-            "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-            "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "regex": "^[A-Za-z0-9._]{1,80}$",
-              "validationMessage": "Enter the Azure Compute Gallery name."
+            "name": "imageDefinitionsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), concat(steps('instanceDetails').galleryPicker.id, '/images?api-version=2023-07-03'), concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups?api-version=2021-04-01'))]"
             }
           },
           {
             "name": "galleryImageDefinitionName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Gallery image definition",
-            "defaultValue": "",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Image definition",
+            "placeholder": "Select an image definition...",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "toolTip": "Select the gallery image definition to use for session host VMs.",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "regex": "^[A-Za-z0-9._-]{1,80}$",
-              "validationMessage": "Enter the gallery image definition name."
+              "allowedValues": "[map(coalesce(steps('instanceDetails').imageDefinitionsApi.value, createArray()), (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
             }
           },
           {
@@ -431,29 +414,35 @@
             }
           },
           {
+            "name": "subnetsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[if(and(equals(steps('networking').networkMode, 'Brownfield'), and(contains(steps('networking').existingVnet, 'id'), not(empty(steps('networking').existingVnet.id)))), concat(steps('networking').existingVnet.id, '/subnets?api-version=2023-09-01'), concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups?api-version=2021-04-01'))]"
+            }
+          },
+          {
             "name": "sessionHostSubnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Session host subnet name",
-            "defaultValue": "snet-avd-sessionhosts",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Session host subnet",
+            "placeholder": "Select a subnet...",
             "visible": "[equals(steps('networking').networkMode, 'Brownfield')]",
-            "toolTip": "Name of the existing subnet where AVD session host VMs will be deployed.",
+            "toolTip": "Select the subnet where AVD session host VMs will be deployed.",
             "constraints": {
               "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
-              "regex": "^[a-zA-Z0-9][a-zA-Z0-9\\-]{0,78}[a-zA-Z0-9]$",
-              "validationMessage": "Must be a valid Azure subnet name (2-80 alphanumeric or hyphen characters)."
+              "allowedValues": "[map(coalesce(steps('networking').subnetsApi.value, createArray()), (item) => parse(concat('{\"label\":\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\",\"value\":\"', item.name, '\"}')))]"
             }
           },
           {
             "name": "privateEndpointSubnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Private endpoint subnet name",
-            "defaultValue": "snet-avd-privateendpoints",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Private endpoint subnet",
+            "placeholder": "Select a subnet...",
             "visible": "[equals(steps('networking').networkMode, 'Brownfield')]",
-            "toolTip": "Name of the existing subnet for AVD private endpoints (FSLogix storage, monitoring).",
+            "toolTip": "Select the subnet for AVD private endpoints (FSLogix storage, monitoring).",
             "constraints": {
               "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
-              "regex": "^[a-zA-Z0-9][a-zA-Z0-9\\-]{0,78}[a-zA-Z0-9]$",
-              "validationMessage": "Must be a valid Azure subnet name (2-80 alphanumeric or hyphen characters)."
+              "allowedValues": "[map(coalesce(steps('networking').subnetsApi.value, createArray()), (item) => parse(concat('{\"label\":\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\",\"value\":\"', item.name, '\"}')))]"
             }
           }
         ]
@@ -724,9 +713,9 @@
       "marketplaceImageOffer": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).offer, steps('instanceDetails').marketplaceImageOffer)]",
       "marketplaceImageSku": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).sku, steps('instanceDetails').marketplaceImageSku)]",
       "marketplaceImageVersion": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).version, steps('instanceDetails').marketplaceImageVersion)]",
-      "galleryImageSubscriptionId": "[if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId)]",
-      "galleryImageResourceGroupName": "[steps('instanceDetails').galleryImageResourceGroupName]",
-      "galleryName": "[steps('instanceDetails').galleryName]",
+      "galleryImageSubscriptionId": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), last(take(split(steps('instanceDetails').galleryPicker.id, '/'), 3)), subscription().subscriptionId)]",
+      "galleryImageResourceGroupName": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), last(take(split(steps('instanceDetails').galleryPicker.id, '/'), 5)), '')]",
+      "galleryName": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), contains(steps('instanceDetails').galleryPicker, 'name')), steps('instanceDetails').galleryPicker.name, '')]",
       "galleryImageDefinitionName": "[steps('instanceDetails').galleryImageDefinitionName]",
       "galleryImageVersion": "[steps('instanceDetails').galleryImageVersion]",
       "avdMode": "[steps('instanceDetails').avdMode]",
