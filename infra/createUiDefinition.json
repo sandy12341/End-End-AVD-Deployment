@@ -449,84 +449,188 @@
             }
           },
           {
-            "name": "avdUserObjectIds",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Legacy shared access object IDs",
-            "defaultValue": "",
-            "multiLine": true,
-            "toolTip": "Compatibility path. Leave blank to skip. If supplied, these User object IDs are applied to all published app groups.",
-            "constraints": {
-              "required": false,
-              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
-              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
-            }
-          },
-          {
-            "name": "desktopUserObjectIds",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Desktop user object IDs",
-            "defaultValue": "",
-            "multiLine": true,
+            "name": "desktopAssignments",
+            "type": "Microsoft.Common.EditableGrid",
+            "ariaLabel": "Desktop app group access assignments",
+            "label": "Desktop app group access assignments",
             "visible": "[or(equals(steps('instanceDetails').avdMode, ''), equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra user object IDs.",
+            "defaultValue": [],
             "constraints": {
-              "required": false,
-              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
-              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
+              "width": "Full",
+              "rows": {
+                "count": {
+                  "min": 0,
+                  "max": 50
+                }
+              },
+              "columns": [
+                {
+                  "id": "principalId",
+                  "header": "Object ID",
+                  "width": "2fr",
+                  "element": {
+                    "name": "principalId",
+                    "type": "Microsoft.Common.TextBox",
+                    "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                    "constraints": {
+                      "required": true,
+                      "regex": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                      "validationMessage": "Must be a valid GUID."
+                    }
+                  }
+                },
+                {
+                  "id": "principalType",
+                  "header": "Type",
+                  "width": "1fr",
+                  "element": {
+                    "name": "principalType",
+                    "type": "Microsoft.Common.DropDown",
+                    "defaultValue": "User",
+                    "constraints": {
+                      "required": true,
+                      "allowedValues": [
+                        {
+                          "label": "User",
+                          "value": "User"
+                        },
+                        {
+                          "label": "Group",
+                          "value": "Group"
+                        },
+                        {
+                          "label": "ServicePrincipal",
+                          "value": "ServicePrincipal"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
             }
           },
           {
-            "name": "desktopGroupObjectIds",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Desktop group object IDs",
-            "defaultValue": "",
-            "multiLine": true,
-            "visible": "[or(equals(steps('instanceDetails').avdMode, ''), equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra group object IDs.",
-            "constraints": {
-              "required": false,
-              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
-              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
-            }
-          },
-          {
-            "name": "remoteAppUserObjectIds",
-            "type": "Microsoft.Common.TextBox",
-            "label": "RemoteApp user object IDs",
-            "defaultValue": "",
-            "multiLine": true,
+            "name": "remoteAppAssignments",
+            "type": "Microsoft.Common.EditableGrid",
+            "ariaLabel": "RemoteApp group access assignments",
+            "label": "RemoteApp group access assignments",
             "visible": "[or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra user object IDs.",
+            "defaultValue": [],
             "constraints": {
-              "required": false,
-              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
-              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
+              "width": "Full",
+              "rows": {
+                "count": {
+                  "min": 0,
+                  "max": 50
+                }
+              },
+              "columns": [
+                {
+                  "id": "principalId",
+                  "header": "Object ID",
+                  "width": "2fr",
+                  "element": {
+                    "name": "principalId",
+                    "type": "Microsoft.Common.TextBox",
+                    "placeholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                    "constraints": {
+                      "required": true,
+                      "regex": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                      "validationMessage": "Must be a valid GUID."
+                    }
+                  }
+                },
+                {
+                  "id": "principalType",
+                  "header": "Type",
+                  "width": "1fr",
+                  "element": {
+                    "name": "principalType",
+                    "type": "Microsoft.Common.DropDown",
+                    "defaultValue": "User",
+                    "constraints": {
+                      "required": true,
+                      "allowedValues": [
+                        {
+                          "label": "User",
+                          "value": "User"
+                        },
+                        {
+                          "label": "Group",
+                          "value": "Group"
+                        },
+                        {
+                          "label": "ServicePrincipal",
+                          "value": "ServicePrincipal"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
             }
           },
           {
-            "name": "remoteAppGroupObjectIds",
-            "type": "Microsoft.Common.TextBox",
-            "label": "RemoteApp group object IDs",
-            "defaultValue": "",
-            "multiLine": true,
+            "name": "remoteApps",
+            "type": "Microsoft.Common.EditableGrid",
+            "ariaLabel": "RemoteApp definitions",
+            "label": "RemoteApp definitions",
             "visible": "[or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Optional. Comma-separated or newline-separated Microsoft Entra group object IDs.",
+            "toolTip": "Add one row per RemoteApp. Name and executable path are required.",
+            "defaultValue": [],
             "constraints": {
-              "required": false,
-              "regex": "^\\s*$|^\\s*[0-9a-fA-F-]{36}(\\s*[,\\n]\\s*[0-9a-fA-F-]{36})*\\s*$",
-              "validationMessage": "Use one or more GUID object IDs separated by commas or new lines."
-            }
-          },
-          {
-            "name": "remoteAppsJson",
-            "type": "Microsoft.Common.TextBox",
-            "label": "RemoteApp definitions (JSON array)",
-            "defaultValue": "[]",
-            "multiLine": true,
-            "visible": "[or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp'))]",
-            "toolTip": "Each item must include name and filePath and can optionally include friendlyName, description, commandLineSetting, and commandLineArguments.",
-            "constraints": {
-              "required": true
+              "width": "Full",
+              "rows": {
+                "count": {
+                  "min": 0,
+                  "max": 30
+                }
+              },
+              "columns": [
+                {
+                  "id": "name",
+                  "header": "App name",
+                  "width": "1fr",
+                  "element": {
+                    "name": "name",
+                    "type": "Microsoft.Common.TextBox",
+                    "placeholder": "Notepad",
+                    "constraints": {
+                      "required": true,
+                      "regex": "^[^\\\\/:*?\"<>|]{1,64}$",
+                      "validationMessage": "App name must be 1-64 characters and must not contain \\ / : * ? \" < > |"
+                    }
+                  }
+                },
+                {
+                  "id": "filePath",
+                  "header": "Executable path",
+                  "width": "2fr",
+                  "element": {
+                    "name": "filePath",
+                    "type": "Microsoft.Common.TextBox",
+                    "placeholder": "C:\\Windows\\System32\\notepad.exe",
+                    "constraints": {
+                      "required": true,
+                      "regex": "^[A-Za-z]:\\\\.*\\.exe$",
+                      "validationMessage": "Must be a full Windows path ending in .exe"
+                    }
+                  }
+                },
+                {
+                  "id": "friendlyName",
+                  "header": "Display name (optional)",
+                  "width": "1fr",
+                  "element": {
+                    "name": "friendlyName",
+                    "type": "Microsoft.Common.TextBox",
+                    "placeholder": "Notepad",
+                    "constraints": {
+                      "required": false
+                    }
+                  }
+                }
+              ]
             }
           }
         ]
@@ -569,9 +673,9 @@
       "storageAccountName": "[steps('storageMonitoring').storageAccountName]",
       "deployMonitoring": "[steps('storageMonitoring').deployMonitoring]",
       "avdUserObjectIds": "[steps('access').avdUserObjectIds]",
-      "desktopAccessAssignments": "[union(map(filter(split(replace(replace(replace(steps('access').desktopUserObjectIds, ' ', ''), '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(item))), (item) => parse(concat('{\"principalId\":\"', item, '\",\"principalType\":\"User\"}'))), map(filter(split(replace(replace(replace(steps('access').desktopGroupObjectIds, ' ', ''), '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(item))), (item) => parse(concat('{\"principalId\":\"', item, '\",\"principalType\":\"Group\"}'))))]",
-      "remoteAppAccessAssignments": "[union(map(filter(split(replace(replace(replace(steps('access').remoteAppUserObjectIds, ' ', ''), '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(item))), (item) => parse(concat('{\"principalId\":\"', item, '\",\"principalType\":\"User\"}'))), map(filter(split(replace(replace(replace(steps('access').remoteAppGroupObjectIds, ' ', ''), '\\r\\n', ','), '\\n', ','), ','), (item) => not(empty(item))), (item) => parse(concat('{\"principalId\":\"', item, '\",\"principalType\":\"Group\"}'))))]",
-      "remoteApps": "[if(or(equals(steps('instanceDetails').avdMode, 'PooledRemoteApp'), equals(steps('instanceDetails').avdMode, 'PooledDesktopAndRemoteApp')), parse(if(empty(steps('access').remoteAppsJson), '[]', steps('access').remoteAppsJson)), parse('[]'))]"
+      "desktopAccessAssignments": "[steps('access').desktopAssignments]",
+      "remoteAppAccessAssignments": "[steps('access').remoteAppAssignments]",
+      "remoteApps": "[steps('access').remoteApps]"
     }
   }
 }
