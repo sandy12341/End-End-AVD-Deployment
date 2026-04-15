@@ -353,25 +353,46 @@
         "label": "Networking",
         "elements": [
           {
-            "name": "vnetConfig",
+            "name": "networkMode",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Network deployment mode",
+            "defaultValue": "Greenfield",
+            "toolTip": "Greenfield creates a new dedicated spoke VNet. Brownfield connects AVD to a VNet and subnets you already manage.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label": "Greenfield — create new spoke VNet and subnets",
+                  "value": "Greenfield"
+                },
+                {
+                  "label": "Brownfield — use existing VNet and subnets",
+                  "value": "Brownfield"
+                }
+              ]
+            }
+          },
+          {
+            "name": "greenfieldVnetConfig",
             "type": "Microsoft.Network.VirtualNetworkCombo",
             "label": {
-              "virtualNetwork": "Virtual network",
+              "virtualNetwork": "New spoke virtual network",
               "subnets": "Subnets"
             },
             "toolTip": {
-              "virtualNetwork": "Select an existing VNet or create a new one for AVD session hosts.",
-              "subnets": "Select or name subnets for session hosts and private endpoints."
+              "virtualNetwork": "Name and address space for the new spoke VNet that will be created for AVD session hosts.",
+              "subnets": "Names and CIDR prefixes for the AVD subnets."
             },
+            "visible": "[equals(steps('networking').networkMode, 'Greenfield')]",
             "defaultValue": {
-              "name": "vnet-avd",
+              "name": "vnet-avd-spoke",
               "addressPrefixSize": "/16"
             },
             "constraints": {
               "minAddressPrefixSize": "/16"
             },
             "options": {
-              "hideExisting": false
+              "hideExisting": true
             },
             "subnets": {
               "sessionHostSubnet": {
@@ -400,14 +421,58 @@
           },
           {
             "name": "hubVnet",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Hub virtual network resource ID",
-            "toolTip": "Full resource ID of the existing hub VNet to peer with the new spoke VNet. Required only when creating a new VNet. Format: /subscriptions/{guid}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}",
-            "visible": "[equals(steps('networking').vnetConfig.newOrExisting, 'new')]",
+            "type": "Microsoft.Solutions.ResourceSelector",
+            "label": "Hub virtual network (optional — for VNet peering)",
+            "resourceType": "Microsoft.Network/virtualNetworks",
+            "visible": "[equals(steps('networking').networkMode, 'Greenfield')]",
+            "toolTip": "Select an existing hub VNet to peer the new spoke VNet with. Leave unselected to skip peering.",
+            "options": {
+              "filter": {
+                "subscription": "onBasics"
+              }
+            }
+          },
+          {
+            "name": "existingVnet",
+            "type": "Microsoft.Solutions.ResourceSelector",
+            "label": "Existing virtual network",
+            "resourceType": "Microsoft.Network/virtualNetworks",
+            "visible": "[equals(steps('networking').networkMode, 'Brownfield')]",
+            "toolTip": "Select the VNet where AVD session hosts will be deployed.",
             "constraints": {
-              "required": "[equals(steps('networking').vnetConfig.newOrExisting, 'new')]",
-              "regex": "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.Network/virtualNetworks/[^/]+$",
-              "validationMessage": "Enter the full VNet resource ID."
+              "required": "[equals(steps('networking').networkMode, 'Brownfield')]"
+            },
+            "options": {
+              "filter": {
+                "subscription": "onBasics",
+                "location": "onBasics"
+              }
+            }
+          },
+          {
+            "name": "sessionHostSubnetName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Session host subnet name",
+            "defaultValue": "snet-avd-sessionhosts",
+            "visible": "[equals(steps('networking').networkMode, 'Brownfield')]",
+            "toolTip": "Name of the existing subnet where AVD session host VMs will be deployed.",
+            "constraints": {
+              "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
+              "regex": "^[a-zA-Z0-9][a-zA-Z0-9\\-]{0,78}[a-zA-Z0-9]$",
+              "validationMessage": "Must be a valid Azure subnet name (2-80 alphanumeric or hyphen characters)."
+            }
+          },
+          {
+            "name": "privateEndpointSubnetName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Private endpoint subnet name",
+            "defaultValue": "snet-avd-privateendpoints",
+            "visible": "[equals(steps('networking').networkMode, 'Brownfield')]",
+            "toolTip": "Name of the existing subnet for AVD private endpoints (FSLogix storage, monitoring).",
+            "constraints": {
+              "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
+              "regex": "^[a-zA-Z0-9][a-zA-Z0-9\\-]{0,78}[a-zA-Z0-9]$",
+              "validationMessage": "Must be a valid Azure subnet name (2-80 alphanumeric or hyphen characters)."
             }
           }
         ]
@@ -761,6 +826,18 @@
       "applicationResourceName": "[steps('instanceDetails').hostPoolName]",
       "location": "[location()]",
       "deploymentPrefix": "[basics('deploymentPrefix')]",
+      "networkMode": "[if(equals(steps('networking').networkMode, 'Greenfield'), 'CreateNewVnet', 'UseExistingVnet')]",
+      "existingVnetName": "[if(equals(steps('networking').networkMode, 'Brownfield'), if(contains(steps('networking').existingVnet, 'name'), steps('networking').existingVnet.name, ''), '')]",
+      "existingVnetResourceGroupName": "[if(equals(steps('networking').networkMode, 'Brownfield'), if(contains(steps('networking').existingVnet, 'id'), last(take(split(steps('networking').existingVnet.id, '/'), 5)), ''), '')]",
+      "sessionHostSubnetName": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(contains(steps('networking').greenfieldVnetConfig, 'subnets'), steps('networking').greenfieldVnetConfig.subnets.sessionHostSubnet.name, 'snet-avd-sessionhosts'), if(empty(steps('networking').sessionHostSubnetName), 'snet-avd-sessionhosts', steps('networking').sessionHostSubnetName))]",
+      "privateEndpointSubnetName": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(contains(steps('networking').greenfieldVnetConfig, 'subnets'), steps('networking').greenfieldVnetConfig.subnets.privateEndpointSubnet.name, 'snet-avd-privateendpoints'), if(empty(steps('networking').privateEndpointSubnetName), 'snet-avd-privateendpoints', steps('networking').privateEndpointSubnetName))]",
+      "newVnetName": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(contains(steps('networking').greenfieldVnetConfig, 'name'), steps('networking').greenfieldVnetConfig.name, 'vnet-avd-spoke'), '')]",
+      "newVnetAddressPrefix": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(and(contains(steps('networking').greenfieldVnetConfig, 'addressPrefixes'), not(empty(steps('networking').greenfieldVnetConfig.addressPrefixes))), first(steps('networking').greenfieldVnetConfig.addressPrefixes), '10.20.0.0/16'), '')]",
+      "newSessionHostSubnetName": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(contains(steps('networking').greenfieldVnetConfig, 'subnets'), steps('networking').greenfieldVnetConfig.subnets.sessionHostSubnet.name, 'snet-avd-sessionhosts'), '')]",
+      "newSessionHostSubnetPrefix": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(and(contains(steps('networking').greenfieldVnetConfig, 'subnets'), not(empty(steps('networking').greenfieldVnetConfig.subnets.sessionHostSubnet.addressPrefix))), steps('networking').greenfieldVnetConfig.subnets.sessionHostSubnet.addressPrefix, '10.20.1.0/24'), '')]",
+      "newPrivateEndpointSubnetName": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(contains(steps('networking').greenfieldVnetConfig, 'subnets'), steps('networking').greenfieldVnetConfig.subnets.privateEndpointSubnet.name, 'snet-avd-privateendpoints'), '')]",
+      "newPrivateEndpointSubnetPrefix": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(and(contains(steps('networking').greenfieldVnetConfig, 'subnets'), not(empty(steps('networking').greenfieldVnetConfig.subnets.privateEndpointSubnet.addressPrefix))), steps('networking').greenfieldVnetConfig.subnets.privateEndpointSubnet.addressPrefix, '10.20.2.0/24'), '')]",
+      "hubVnetResourceId": "[if(equals(steps('networking').networkMode, 'Greenfield'), if(contains(steps('networking').hubVnet, 'id'), steps('networking').hubVnet.id, ''), '')]",
       "environment": "[basics('environment')]",
       "sessionHostCount": "[steps('instanceDetails').sessionHostCount]",
       "vmSize": "[steps('instanceDetails').vmSize]",
@@ -777,18 +854,6 @@
       "avdMode": "[if(equals(steps('instanceDetails').avdMode, 'LegacyPooledDesktop'), '', steps('instanceDetails').avdMode)]",
       "hostPoolType": "[steps('instanceDetails').hostPoolType]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
-      "networkMode": "[if(and(contains(steps('networking').vnetConfig, 'newOrExisting'), equals(steps('networking').vnetConfig.newOrExisting, 'new')), 'CreateNewVnet', 'UseExistingVnet')]",
-      "existingVnetName": "[if(and(contains(steps('networking').vnetConfig, 'newOrExisting'), equals(steps('networking').vnetConfig.newOrExisting, 'existing')), steps('networking').vnetConfig.name, '')]",
-      "existingVnetResourceGroupName": "[if(and(contains(steps('networking').vnetConfig, 'newOrExisting'), equals(steps('networking').vnetConfig.newOrExisting, 'existing')), steps('networking').vnetConfig.resourceGroup, '')]",
-      "sessionHostSubnetName": "[if(contains(steps('networking').vnetConfig, 'subnets'), steps('networking').vnetConfig.subnets.sessionHostSubnet.name, 'snet-avd-sessionhosts')]",
-      "privateEndpointSubnetName": "[if(contains(steps('networking').vnetConfig, 'subnets'), steps('networking').vnetConfig.subnets.privateEndpointSubnet.name, 'snet-avd-privateendpoints')]",
-      "newVnetName": "[if(and(contains(steps('networking').vnetConfig, 'newOrExisting'), equals(steps('networking').vnetConfig.newOrExisting, 'new')), steps('networking').vnetConfig.name, '')]",
-      "newVnetAddressPrefix": "[if(and(contains(steps('networking').vnetConfig, 'addressPrefixes'), not(empty(steps('networking').vnetConfig.addressPrefixes))), first(steps('networking').vnetConfig.addressPrefixes), '10.20.0.0/16')]",
-      "newSessionHostSubnetName": "[if(contains(steps('networking').vnetConfig, 'subnets'), steps('networking').vnetConfig.subnets.sessionHostSubnet.name, 'snet-avd-sessionhosts')]",
-      "newSessionHostSubnetPrefix": "[if(and(contains(steps('networking').vnetConfig, 'subnets'), not(empty(steps('networking').vnetConfig.subnets.sessionHostSubnet.addressPrefix))), steps('networking').vnetConfig.subnets.sessionHostSubnet.addressPrefix, '10.20.1.0/24')]",
-      "newPrivateEndpointSubnetName": "[if(contains(steps('networking').vnetConfig, 'subnets'), steps('networking').vnetConfig.subnets.privateEndpointSubnet.name, 'snet-avd-privateendpoints')]",
-      "newPrivateEndpointSubnetPrefix": "[if(and(contains(steps('networking').vnetConfig, 'subnets'), not(empty(steps('networking').vnetConfig.subnets.privateEndpointSubnet.addressPrefix))), steps('networking').vnetConfig.subnets.privateEndpointSubnet.addressPrefix, '10.20.2.0/24')]",
-      "hubVnetResourceId": "[if(and(contains(steps('networking').vnetConfig, 'newOrExisting'), equals(steps('networking').vnetConfig.newOrExisting, 'new')), steps('networking').hubVnet, '')]",
       "adminUsername": "[steps('access').adminUsername]",
       "adminPassword": "[steps('access').adminPassword]",
       "authenticationType": "[steps('authentication').authenticationType]",
