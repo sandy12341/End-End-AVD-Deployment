@@ -268,7 +268,7 @@
             "toolTip": "Select the gallery image definition to use for session host VMs.",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[map(if(contains(steps('instanceDetails').imageDefinitionsApi, 'value'), steps('instanceDetails').imageDefinitionsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\\\"label\\\":\\\"', item.name, '\\\",\\\"value\\\":\\\"', item.name, '\\\"}')))]"
+              "allowedValues": "[map(if(contains(steps('instanceDetails').imageDefinitionsApi, 'value'), steps('instanceDetails').imageDefinitionsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
             }
           },
           {
@@ -449,7 +449,7 @@
             "toolTip": "Select the subnet where AVD session host VMs will be deployed.",
             "constraints": {
               "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
-              "allowedValues": "[map(if(contains(steps('networking').subnetsApi, 'value'), steps('networking').subnetsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\\\"label\\\":\\\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\\\",\\\"value\\\":\\\"', item.name, '\\\"}')))]"
+              "allowedValues": "[map(if(contains(steps('networking').subnetsApi, 'value'), steps('networking').subnetsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\"label\":\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\",\"value\":\"', item.name, '\"}')))]"
             }
           },
           {
@@ -461,7 +461,7 @@
             "toolTip": "Select the subnet for AVD private endpoints (FSLogix storage, monitoring).",
             "constraints": {
               "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
-              "allowedValues": "[map(if(contains(steps('networking').subnetsApi, 'value'), steps('networking').subnetsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\\\"label\\\":\\\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\\\",\\\"value\\\":\\\"', item.name, '\\\"}')))]"
+              "allowedValues": "[map(if(contains(steps('networking').subnetsApi, 'value'), steps('networking').subnetsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\"label\":\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\",\"value\":\"', item.name, '\"}')))]"
             }
           }
         ]
