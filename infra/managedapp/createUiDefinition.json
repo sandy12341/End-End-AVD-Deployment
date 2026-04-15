@@ -256,7 +256,7 @@
             "type": "Microsoft.Solutions.ArmApiControl",
             "request": {
               "method": "GET",
-              "path": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), concat(steps('instanceDetails').galleryPicker.id, '/images?api-version=2023-07-03'), concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups?api-version=2021-04-01'))]"
+              "path": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), concat(steps('instanceDetails').galleryPicker.id, '/images?api-version=2022-08-03'), concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups?api-version=2021-04-01'))]"
             }
           },
           {
@@ -268,7 +268,7 @@
             "toolTip": "Select the gallery image definition to use for session host VMs.",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[map(coalesce(steps('instanceDetails').imageDefinitionsApi.value, createArray()), (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
+              "allowedValues": "[map(if(contains(steps('instanceDetails').imageDefinitionsApi, 'value'), steps('instanceDetails').imageDefinitionsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\\\"label\\\":\\\"', item.name, '\\\",\\\"value\\\":\\\"', item.name, '\\\"}')))]"
             }
           },
           {
@@ -449,7 +449,7 @@
             "toolTip": "Select the subnet where AVD session host VMs will be deployed.",
             "constraints": {
               "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
-              "allowedValues": "[map(coalesce(steps('networking').subnetsApi.value, createArray()), (item) => parse(concat('{\"label\":\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\",\"value\":\"', item.name, '\"}')))]"
+              "allowedValues": "[map(if(contains(steps('networking').subnetsApi, 'value'), steps('networking').subnetsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\\\"label\\\":\\\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\\\",\\\"value\\\":\\\"', item.name, '\\\"}')))]"
             }
           },
           {
@@ -461,7 +461,7 @@
             "toolTip": "Select the subnet for AVD private endpoints (FSLogix storage, monitoring).",
             "constraints": {
               "required": "[equals(steps('networking').networkMode, 'Brownfield')]",
-              "allowedValues": "[map(coalesce(steps('networking').subnetsApi.value, createArray()), (item) => parse(concat('{\"label\":\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\",\"value\":\"', item.name, '\"}')))]"
+              "allowedValues": "[map(if(contains(steps('networking').subnetsApi, 'value'), steps('networking').subnetsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\\\"label\\\":\\\"', item.name, ' (', coalesce(item.properties.addressPrefix, ''), ')\\\",\\\"value\\\":\\\"', item.name, '\\\"}')))]"
             }
           }
         ]
