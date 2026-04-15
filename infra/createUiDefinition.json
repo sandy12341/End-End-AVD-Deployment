@@ -73,25 +73,31 @@
           },
           {
             "name": "vmSize",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Compute.SizeSelector",
             "label": "VM Size",
-            "defaultValue": "Standard_D2ads_v5",
-            "filter": true,
+            "toolTip": "Select the Azure VM size for AVD session hosts. Recommended sizes are pre-filtered for AVD workloads.",
+            "recommendedSizes": [
+              "Standard_D2ads_v5",
+              "Standard_D4ads_v5",
+              "Standard_D8ads_v5",
+              "Standard_D16ads_v5",
+              "Standard_E2ads_v5",
+              "Standard_E4ads_v5",
+              "Standard_E8ads_v5"
+            ],
             "constraints": {
-              "required": true,
-              "allowedValues": [
-                { "label": "Standard_D2ads_v5 (2 vCPU, 8 GiB)", "value": "Standard_D2ads_v5" },
-                { "label": "Standard_D4ads_v5 (4 vCPU, 16 GiB)", "value": "Standard_D4ads_v5" },
-                { "label": "Standard_D8ads_v5 (8 vCPU, 32 GiB)", "value": "Standard_D8ads_v5" },
-                { "label": "Standard_D16ads_v5 (16 vCPU, 64 GiB)", "value": "Standard_D16ads_v5" },
-                { "label": "Standard_D32ads_v5 (32 vCPU, 128 GiB)", "value": "Standard_D32ads_v5" },
-                { "label": "Standard_E2ads_v5 (2 vCPU, 16 GiB)", "value": "Standard_E2ads_v5" },
-                { "label": "Standard_E4ads_v5 (4 vCPU, 32 GiB)", "value": "Standard_E4ads_v5" },
-                { "label": "Standard_E8ads_v5 (8 vCPU, 64 GiB)", "value": "Standard_E8ads_v5" },
-                { "label": "Standard_NV6ads_A10_v5 (6 vCPU, 55 GiB — GPU)", "value": "Standard_NV6ads_A10_v5" },
-                { "label": "Standard_NV12ads_A10_v5 (12 vCPU, 110 GiB — GPU)", "value": "Standard_NV12ads_A10_v5" }
-              ]
-            }
+              "allowedSizes": []
+            },
+            "options": {
+              "hideDiskTypeFilter": false
+            },
+            "osPlatform": "Windows",
+            "imageReference": {
+              "publisher": "microsoftwindowsdesktop",
+              "offer": "office-365",
+              "sku": "win11-24h2-avd-m365"
+            },
+            "count": "[steps('instanceDetails').sessionHostCount]"
           },
           {
             "name": "imageSource",
@@ -328,154 +334,61 @@
         "label": "Networking",
         "elements": [
           {
-            "name": "networkMode",
-            "type": "Microsoft.Common.DropDown",
-            "label": "Network mode",
-            "defaultValue": "UseExistingVnet",
-            "toolTip": "Use brownfield mode to deploy into an existing VNet, or greenfield mode to create a new spoke VNet and peer it with an existing hub VNet.",
+            "name": "vnetConfig",
+            "type": "Microsoft.Network.VirtualNetworkCombo",
+            "label": {
+              "virtualNetwork": "Virtual network",
+              "subnets": "Subnets"
+            },
+            "toolTip": {
+              "virtualNetwork": "Select an existing VNet or create a new one for AVD session hosts.",
+              "subnets": "Select or name subnets for session hosts and private endpoints."
+            },
+            "defaultValue": {
+              "name": "vnet-avd",
+              "addressPrefixSize": "/16"
+            },
             "constraints": {
-              "required": true,
-              "allowedValues": [
-                {
-                  "label": "Use existing VNet",
-                  "value": "UseExistingVnet"
+              "minAddressPrefixSize": "/16"
+            },
+            "options": {
+              "hideExisting": false
+            },
+            "subnets": {
+              "sessionHostSubnet": {
+                "label": "Session host subnet",
+                "defaultValue": {
+                  "name": "snet-avd-sessionhosts",
+                  "addressPrefixSize": "/24"
                 },
-                {
-                  "label": "Create new VNet",
-                  "value": "CreateNewVnet"
+                "constraints": {
+                  "minAddressPrefixSize": "/24",
+                  "minCount": 1
                 }
-              ]
-            }
-          },
-          {
-            "name": "existingVnetResourceGroupName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Existing VNet resource group",
-            "toolTip": "Resource group that contains the existing virtual network.",
-            "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-              "regex": "^[A-Za-z0-9._()-]{1,90}$",
-              "validationMessage": "Enter the resource group name."
-            }
-          },
-          {
-            "name": "existingVnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Existing virtual network name",
-            "toolTip": "Name of the existing VNet where AVD session hosts will be deployed.",
-            "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,62}$",
-              "validationMessage": "Enter the virtual network name."
-            }
-          },
-          {
-            "name": "sessionHostSubnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Session host subnet",
-            "toolTip": "Name of the existing subnet for AVD session host NICs.",
-            "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,79}$",
-              "validationMessage": "Enter the subnet name."
-            }
-          },
-          {
-            "name": "privateEndpointSubnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Private endpoint subnet",
-            "toolTip": "Name of the existing subnet reserved for private endpoints.",
-            "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
-              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,79}$",
-              "validationMessage": "Enter the subnet name."
+              },
+              "privateEndpointSubnet": {
+                "label": "Private endpoint subnet",
+                "defaultValue": {
+                  "name": "snet-avd-privateendpoints",
+                  "addressPrefixSize": "/27"
+                },
+                "constraints": {
+                  "minAddressPrefixSize": "/27",
+                  "minCount": 1
+                }
+              }
             }
           },
           {
             "name": "hubVnet",
             "type": "Microsoft.Common.TextBox",
             "label": "Hub virtual network resource ID",
-            "toolTip": "Full resource ID of the existing hub VNet to peer with. Format: /subscriptions/{guid}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
+            "toolTip": "Full resource ID of the existing hub VNet to peer with the new spoke VNet. Required only when creating a new VNet. Format: /subscriptions/{guid}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}",
+            "visible": "[equals(steps('networking').vnetConfig.newOrExisting, 'new')]",
             "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
+              "required": "[equals(steps('networking').vnetConfig.newOrExisting, 'new')]",
               "regex": "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.Network/virtualNetworks/[^/]+$",
               "validationMessage": "Enter the full VNet resource ID."
-            }
-          },
-          {
-            "name": "newVnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "New virtual network name",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,62}$",
-              "validationMessage": "Use 1-63 letters, digits, hyphens, underscores, or periods."
-            }
-          },
-          {
-            "name": "newVnetAddressPrefix",
-            "type": "Microsoft.Common.TextBox",
-            "label": "New virtual network CIDR",
-            "defaultValue": "10.20.0.0/16",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-              "regex": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/(?:[0-9]|[1-2][0-9]|3[0-2])$",
-              "validationMessage": "Enter a CIDR such as 10.20.0.0/16."
-            }
-          },
-          {
-            "name": "newSessionHostSubnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Session host subnet name",
-            "defaultValue": "snet-avd-sessionhosts",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,79}$",
-              "validationMessage": "Use 1-80 letters, digits, hyphens, underscores, or periods."
-            }
-          },
-          {
-            "name": "newSessionHostSubnetPrefix",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Session host subnet CIDR",
-            "defaultValue": "10.20.1.0/24",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-              "regex": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/(?:[0-9]|[1-2][0-9]|3[0-2])$",
-              "validationMessage": "Enter a CIDR such as 10.20.1.0/24."
-            }
-          },
-          {
-            "name": "newPrivateEndpointSubnetName",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Private endpoint subnet name",
-            "defaultValue": "snet-avd-privateendpoints",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,79}$",
-              "validationMessage": "Use 1-80 letters, digits, hyphens, underscores, or periods."
-            }
-          },
-          {
-            "name": "newPrivateEndpointSubnetPrefix",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Private endpoint subnet CIDR",
-            "defaultValue": "10.20.2.0/24",
-            "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-            "constraints": {
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
-              "regex": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/(?:[0-9]|[1-2][0-9]|3[0-2])$",
-              "validationMessage": "Enter a CIDR such as 10.20.2.0/24."
             }
           }
         ]
@@ -638,18 +551,18 @@
       "avdMode": "[steps('instanceDetails').avdMode]",
       "hostPoolType": "[steps('instanceDetails').hostPoolType]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
-      "networkMode": "[steps('networking').networkMode]",
-      "existingVnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').existingVnetName, '')]",
-      "existingVnetResourceGroupName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').existingVnetResourceGroupName, '')]",
-      "sessionHostSubnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').sessionHostSubnetName, '')]",
-      "privateEndpointSubnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').privateEndpointSubnetName, '')]",
-      "newVnetName": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newVnetName, '')]",
-      "newVnetAddressPrefix": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newVnetAddressPrefix, '10.20.0.0/16')]",
-      "newSessionHostSubnetName": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newSessionHostSubnetName, 'snet-avd-sessionhosts')]",
-      "newSessionHostSubnetPrefix": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newSessionHostSubnetPrefix, '10.20.1.0/24')]",
-      "newPrivateEndpointSubnetName": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newPrivateEndpointSubnetName, 'snet-avd-privateendpoints')]",
-      "newPrivateEndpointSubnetPrefix": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newPrivateEndpointSubnetPrefix, '10.20.2.0/24')]",
-      "hubVnetResourceId": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').hubVnet, '')]",
+      "networkMode": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), 'CreateNewVnet', 'UseExistingVnet')]",
+      "existingVnetName": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'existing'), steps('networking').vnetConfig.name, '')]",
+      "existingVnetResourceGroupName": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'existing'), steps('networking').vnetConfig.resourceGroup, '')]",
+      "sessionHostSubnetName": "[steps('networking').vnetConfig.subnets.sessionHostSubnet.name]",
+      "privateEndpointSubnetName": "[steps('networking').vnetConfig.subnets.privateEndpointSubnet.name]",
+      "newVnetName": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), steps('networking').vnetConfig.name, '')]",
+      "newVnetAddressPrefix": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), first(steps('networking').vnetConfig.addressPrefixes), '10.20.0.0/16')]",
+      "newSessionHostSubnetName": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), steps('networking').vnetConfig.subnets.sessionHostSubnet.name, 'snet-avd-sessionhosts')]",
+      "newSessionHostSubnetPrefix": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), steps('networking').vnetConfig.subnets.sessionHostSubnet.addressPrefix, '10.20.1.0/24')]",
+      "newPrivateEndpointSubnetName": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), steps('networking').vnetConfig.subnets.privateEndpointSubnet.name, 'snet-avd-privateendpoints')]",
+      "newPrivateEndpointSubnetPrefix": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), steps('networking').vnetConfig.subnets.privateEndpointSubnet.addressPrefix, '10.20.2.0/24')]",
+      "hubVnetResourceId": "[if(equals(steps('networking').vnetConfig.newOrExisting, 'new'), steps('networking').hubVnet, '')]",
       "adminUsername": "[steps('access').adminUsername]",
       "adminPassword": "[steps('access').adminPassword]",
       "deployFSLogix": "[steps('storageMonitoring').deployFSLogix]",
