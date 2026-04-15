@@ -71,86 +71,6 @@
         "label": "Instance details",
         "elements": [
           {
-            "name": "vmSizesApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/vmSizes?api-version=2024-07-01')]"
-            }
-          },
-          {
-            "name": "marketplacePublishersApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers?api-version=2024-07-01')]"
-            }
-          },
-          {
-            "name": "marketplaceOffersApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers/', steps('instanceDetails').marketplaceImagePublisher, '/artifacttypes/vmimage/offers?api-version=2024-07-01')]"
-            }
-          },
-          {
-            "name": "marketplaceSkusApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers/', steps('instanceDetails').marketplaceImagePublisher, '/artifacttypes/vmimage/offers/', steps('instanceDetails').marketplaceImageOffer, '/skus?api-version=2024-07-01')]"
-            }
-          },
-          {
-            "name": "marketplaceVersionsApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat(subscription().id, '/providers/Microsoft.Compute/locations/', location(), '/publishers/', steps('instanceDetails').marketplaceImagePublisher, '/artifacttypes/vmimage/offers/', steps('instanceDetails').marketplaceImageOffer, '/skus/', steps('instanceDetails').marketplaceImageSku, '/versions?api-version=2024-07-01')]"
-            }
-          },
-          {
-            "name": "gallerySubscriptionsApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "/subscriptions?api-version=2022-12-01"
-            }
-          },
-          {
-            "name": "galleryResourceGroupsApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/resourcegroups?api-version=2022-09-01')]"
-            }
-          },
-          {
-            "name": "galleriesApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/providers/Microsoft.Compute/galleries?api-version=2024-03-03')]"
-            }
-          },
-          {
-            "name": "galleryImagesApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/resourceGroups/', steps('instanceDetails').galleryImageResourceGroupName, '/providers/Microsoft.Compute/galleries/', steps('instanceDetails').galleryName, '/images?api-version=2024-03-03')]"
-            }
-          },
-          {
-            "name": "galleryImageVersionsApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat('/subscriptions/', if(empty(steps('instanceDetails').galleryImageSubscriptionId), subscription().subscriptionId, steps('instanceDetails').galleryImageSubscriptionId), '/resourceGroups/', steps('instanceDetails').galleryImageResourceGroupName, '/providers/Microsoft.Compute/galleries/', steps('instanceDetails').galleryName, '/images/', steps('instanceDetails').galleryImageDefinitionName, '/versions?api-version=2024-03-03')]"
-            }
-          },
-          {
             "name": "hostPoolName",
             "type": "Microsoft.Common.TextBox",
             "label": "Host pool name",
@@ -178,7 +98,18 @@
             "filter": true,
             "constraints": {
               "required": true,
-              "allowedValues": "[map(steps('instanceDetails').vmSizesApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
+              "allowedValues": [
+                { "label": "Standard_D2ads_v5 (2 vCPU, 8 GiB)", "value": "Standard_D2ads_v5" },
+                { "label": "Standard_D4ads_v5 (4 vCPU, 16 GiB)", "value": "Standard_D4ads_v5" },
+                { "label": "Standard_D8ads_v5 (8 vCPU, 32 GiB)", "value": "Standard_D8ads_v5" },
+                { "label": "Standard_D16ads_v5 (16 vCPU, 64 GiB)", "value": "Standard_D16ads_v5" },
+                { "label": "Standard_D32ads_v5 (32 vCPU, 128 GiB)", "value": "Standard_D32ads_v5" },
+                { "label": "Standard_E2ads_v5 (2 vCPU, 16 GiB)", "value": "Standard_E2ads_v5" },
+                { "label": "Standard_E4ads_v5 (4 vCPU, 32 GiB)", "value": "Standard_E4ads_v5" },
+                { "label": "Standard_E8ads_v5 (8 vCPU, 64 GiB)", "value": "Standard_E8ads_v5" },
+                { "label": "Standard_NV6ads_A10_v5 (6 vCPU, 55 GiB — GPU)", "value": "Standard_NV6ads_A10_v5" },
+                { "label": "Standard_NV12ads_A10_v5 (12 vCPU, 110 GiB — GPU)", "value": "Standard_NV12ads_A10_v5" }
+              ]
             }
           },
           {
@@ -264,110 +195,103 @@
           },
           {
             "name": "marketplaceImagePublisher",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Marketplace publisher",
             "defaultValue": "microsoftwindowsdesktop",
-            "filter": true,
             "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), map(steps('instanceDetails').marketplacePublishersApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
             }
           },
           {
             "name": "marketplaceImageOffer",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Marketplace offer",
             "defaultValue": "windows-11",
-            "filter": true,
             "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), map(steps('instanceDetails').marketplaceOffersApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
             }
           },
           {
             "name": "marketplaceImageSku",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Marketplace SKU",
             "defaultValue": "win11-24h2-avd",
-            "filter": true,
             "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), map(steps('instanceDetails').marketplaceSkusApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
             }
           },
           {
             "name": "marketplaceImageVersion",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Marketplace version",
             "defaultValue": "latest",
-            "filter": true,
             "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
             "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-              "allowedValues": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields), union(parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'), map(steps('instanceDetails').marketplaceVersionsApi, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))), parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'))]"
+              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
             }
           },
           {
             "name": "galleryImageSubscriptionId",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Gallery subscription ID",
-            "defaultValue": "[subscription().subscriptionId]",
-            "filter": true,
+            "defaultValue": "",
+            "toolTip": "Leave blank to use the deployment subscription. Enter a GUID to target a different subscription.",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
-              "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[map(steps('instanceDetails').gallerySubscriptionsApi.value, (item) => parse(concat('{\"label\":\"', item.displayName, ' (', item.subscriptionId, ')\",\"value\":\"', item.subscriptionId, '\"}')))]"
+              "required": false,
+              "regex": "^$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "validationMessage": "Leave blank or enter a valid subscription GUID."
             }
           },
           {
             "name": "galleryImageResourceGroupName",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Gallery resource group",
             "defaultValue": "",
-            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), map(steps('instanceDetails').galleryResourceGroupsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "regex": "^[A-Za-z0-9._()-]{1,90}$",
+              "validationMessage": "Enter the resource group name that contains the Compute Gallery."
             }
           },
           {
             "name": "galleryName",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Gallery name",
             "defaultValue": "",
-            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), map(filter(steps('instanceDetails').galleriesApi.value, (item) => equals(last(take(split(item.id, '/'), 5)), steps('instanceDetails').galleryImageResourceGroupName)), (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "regex": "^[A-Za-z0-9._]{1,80}$",
+              "validationMessage": "Enter the Azure Compute Gallery name."
             }
           },
           {
             "name": "galleryImageDefinitionName",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Gallery image definition",
             "defaultValue": "",
-            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), map(steps('instanceDetails').galleryImagesApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}'))), parse('[]'))]"
+              "regex": "^[A-Za-z0-9._-]{1,80}$",
+              "validationMessage": "Enter the gallery image definition name."
             }
           },
           {
             "name": "galleryImageVersion",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Gallery image version",
             "defaultValue": "latest",
-            "filter": true,
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "allowedValues": "[if(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), union(parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'), map(steps('instanceDetails').galleryImageVersionsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))), parse('[{\"label\":\"latest\",\"value\":\"latest\"}]'))]"
+              "regex": "^latest$|^[0-9]+\\.[0-9]+\\.[0-9]+$",
+              "validationMessage": "Enter 'latest' or a version number like 1.0.0."
             }
           },
           {
@@ -423,14 +347,6 @@
         "label": "Networking",
         "elements": [
           {
-            "name": "vnetApi",
-            "type": "Microsoft.Solutions.ArmApiControl",
-            "request": {
-              "method": "GET",
-              "path": "[concat(subscription().id, '/providers/Microsoft.Network/virtualNetworks?api-version=2023-09-01')]"
-            }
-          },
-          {
             "name": "networkMode",
             "type": "Microsoft.Common.DropDown",
             "label": "Network mode",
@@ -451,49 +367,63 @@
             }
           },
           {
-            "name": "selectedVnet",
-            "type": "Microsoft.Common.DropDown",
-            "label": "Existing virtual network",
-            "toolTip": "Select the existing VNet where AVD session hosts will be deployed.",
-            "filter": true,
+            "name": "existingVnetResourceGroupName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Existing VNet resource group",
+            "toolTip": "Resource group that contains the existing virtual network.",
             "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
             "constraints": {
-              "allowedValues": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), map(steps('networking').vnetApi.value, (item) => parse(concat('{\"label\":\"', item.name, ' (', last(take(split(item.id, '/'), 5)), ')\",\"value\":\"', item.id, '\"}'))), parse('[]'))]",
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]"
+              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
+              "regex": "^[A-Za-z0-9._()-]{1,90}$",
+              "validationMessage": "Enter the resource group name."
+            }
+          },
+          {
+            "name": "existingVnetName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Existing virtual network name",
+            "toolTip": "Name of the existing VNet where AVD session hosts will be deployed.",
+            "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
+            "constraints": {
+              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
+              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,62}$",
+              "validationMessage": "Enter the virtual network name."
             }
           },
           {
             "name": "sessionHostSubnetName",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Session host subnet",
-            "toolTip": "Choose the existing subnet for AVD session host NICs.",
+            "toolTip": "Name of the existing subnet for AVD session host NICs.",
             "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
             "constraints": {
-              "allowedValues": "[if(and(equals(steps('networking').networkMode, 'UseExistingVnet'), not(empty(steps('networking').selectedVnet))), map(first(filter(steps('networking').vnetApi.value, (item) => equals(item.id, steps('networking').selectedVnet))).properties.subnets, (subnet) => parse(concat('{\"label\":\"', subnet.name, '\",\"value\":\"', subnet.name, '\"}'))), parse('[]'))]",
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]"
+              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
+              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,79}$",
+              "validationMessage": "Enter the subnet name."
             }
           },
           {
             "name": "privateEndpointSubnetName",
-            "type": "Microsoft.Common.DropDown",
+            "type": "Microsoft.Common.TextBox",
             "label": "Private endpoint subnet",
-            "toolTip": "Choose the existing subnet reserved for private endpoints.",
+            "toolTip": "Name of the existing subnet reserved for private endpoints.",
             "visible": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
             "constraints": {
-              "allowedValues": "[if(and(equals(steps('networking').networkMode, 'UseExistingVnet'), not(empty(steps('networking').selectedVnet))), map(first(filter(steps('networking').vnetApi.value, (item) => equals(item.id, steps('networking').selectedVnet))).properties.subnets, (subnet) => parse(concat('{\"label\":\"', subnet.name, '\",\"value\":\"', subnet.name, '\"}'))), parse('[]'))]",
-              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]"
+              "required": "[equals(steps('networking').networkMode, 'UseExistingVnet')]",
+              "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{0,79}$",
+              "validationMessage": "Enter the subnet name."
             }
           },
           {
             "name": "hubVnet",
-            "type": "Microsoft.Common.DropDown",
-            "label": "Hub virtual network",
-            "toolTip": "Select the existing hub VNet that the new spoke VNet should peer with.",
-            "filter": true,
+            "type": "Microsoft.Common.TextBox",
+            "label": "Hub virtual network resource ID",
+            "toolTip": "Full resource ID of the existing hub VNet to peer with. Format: /subscriptions/{guid}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}",
             "visible": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
             "constraints": {
-              "allowedValues": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), map(steps('networking').vnetApi.value, (item) => parse(concat('{\"label\":\"', item.name, ' (', last(take(split(item.id, '/'), 5)), ')\",\"value\":\"', item.id, '\"}'))), parse('[]'))]",
-              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]"
+              "required": "[equals(steps('networking').networkMode, 'CreateNewVnet')]",
+              "regex": "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.Network/virtualNetworks/[^/]+$",
+              "validationMessage": "Enter the full VNet resource ID."
             }
           },
           {
@@ -818,8 +748,8 @@
       "hostPoolType": "[steps('instanceDetails').hostPoolType]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
       "networkMode": "[steps('networking').networkMode]",
-      "existingVnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), last(split(steps('networking').selectedVnet, '/')), '')]",
-      "existingVnetResourceGroupName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), last(take(split(steps('networking').selectedVnet, '/'), 5)), '')]",
+      "existingVnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').existingVnetName, '')]",
+      "existingVnetResourceGroupName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').existingVnetResourceGroupName, '')]",
       "sessionHostSubnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').sessionHostSubnetName, '')]",
       "privateEndpointSubnetName": "[if(equals(steps('networking').networkMode, 'UseExistingVnet'), steps('networking').privateEndpointSubnetName, '')]",
       "newVnetName": "[if(equals(steps('networking').networkMode, 'CreateNewVnet'), steps('networking').newVnetName, '')]",
