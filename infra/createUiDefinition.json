@@ -447,8 +447,7 @@
             },
             "options": {
               "filter": {
-                "subscription": "onBasics",
-                "location": "onBasics"
+                "subscription": "onBasics"
               }
             }
           },
