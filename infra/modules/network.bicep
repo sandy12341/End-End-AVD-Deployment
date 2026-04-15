@@ -22,6 +22,9 @@ param privateEndpointSubnetPrefix string = '10.20.2.0/24'
 @description('Optional resource ID of the hub virtual network to peer with the new spoke VNet.')
 param hubVnetResourceId string = ''
 
+@description('When true, omits the Microsoft.Storage service endpoint from the session host subnet. Set to true when a private endpoint is used for FSLogix storage.')
+param removeStorageServiceEndpoint bool = false
+
 @description('Tags for all resources')
 param tags object = {}
 
@@ -75,7 +78,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
           natGateway: {
             id: natGateway.id
           }
-          serviceEndpoints: [
+          serviceEndpoints: removeStorageServiceEndpoint ? [] : [
             {
               service: 'Microsoft.Storage'
             }
@@ -86,31 +89,47 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
         name: privateEndpointSubnetName
         properties: {
           addressPrefix: privateEndpointSubnetPrefix
+          networkSecurityGroup: {
+            id: nsgPrivateEndpoints.id
+          }
         }
       }
     ]
   }
 }
 
+// 3A: NSG for private endpoint subnet — deny all inbound, allow all outbound
+resource nsgPrivateEndpoints 'Microsoft.Network/networkSecurityGroups@2024-01-01' = {
+  name: 'nsg-avd-privateendpoints'
+  location: location
+  tags: tags
+  properties: {
+    securityRules: [
+      {
+        name: 'DenyAllInbound'
+        properties: {
+          priority: 4096
+          direction: 'Inbound'
+          access: 'Deny'
+          protocol: '*'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '*'
+        }
+      }
+    ]
+  }
+}
+
+// 3B: Session host NSG — AllowRDP removed (AVD uses reverse-connect; no inbound RDP required)
+// Break-glass access via Azure Serial Console or Run Command.
 resource nsgSessionHosts 'Microsoft.Network/networkSecurityGroups@2024-01-01' = {
   name: 'nsg-avd-sessionhosts'
   location: location
   tags: tags
   properties: {
     securityRules: [
-      {
-        name: 'AllowRDP'
-        properties: {
-          priority: 1000
-          direction: 'Inbound'
-          access: 'Allow'
-          protocol: 'Tcp'
-          sourceAddressPrefix: 'VirtualNetwork'
-          sourcePortRange: '*'
-          destinationAddressPrefix: '*'
-          destinationPortRange: '3389'
-        }
-      }
       {
         name: 'DenyAllInbound'
         properties: {

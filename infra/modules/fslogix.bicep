@@ -13,19 +13,32 @@ param fileShareQuotaGiB int = 100
 @description('Tags for all resources')
 param tags object = {}
 
-@description('Session host subnet ID for VNet service endpoint access')
+@description('Session host subnet ID for VNet service endpoint access (used when deployPrivateEndpoint is false)')
 param sessionHostSubnetId string = ''
 
-var storageNetworkAcls = {
-  defaultAction: 'Deny'
-  bypass: 'AzureServices'
-  virtualNetworkRules: !empty(sessionHostSubnetId) ? [
-    {
-      id: sessionHostSubnetId
-      action: 'Allow'
+@description('When true, disables public network access on the storage account. A private endpoint must be deployed separately.')
+param deployPrivateEndpoint bool = false
+
+// When using a private endpoint, public access is fully disabled and VNet rules are not needed.
+// When using a service endpoint, the session host subnet is whitelisted via virtualNetworkRules.
+var storageNetworkAcls = deployPrivateEndpoint
+  ? {
+      defaultAction: 'Deny'
+      bypass: 'None'
+      virtualNetworkRules: []
     }
-  ] : []
-}
+  : {
+      defaultAction: 'Deny'
+      bypass: 'AzureServices'
+      virtualNetworkRules: !empty(sessionHostSubnetId)
+        ? [
+            {
+              id: sessionHostSubnetId
+              action: 'Allow'
+            }
+          ]
+        : []
+    }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -40,6 +53,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
     allowSharedKeyAccess: false
+    publicNetworkAccess: deployPrivateEndpoint ? 'Disabled' : 'Enabled'
     networkAcls: storageNetworkAcls
   }
 }
@@ -51,6 +65,7 @@ module storageAccountAuth './fslogixAuth.bicep' = {
     location: location
     tags: tags
     sessionHostSubnetId: sessionHostSubnetId
+    deployPrivateEndpoint: deployPrivateEndpoint
   }
   dependsOn: [fileShare]
 }

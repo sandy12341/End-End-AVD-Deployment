@@ -507,6 +507,14 @@
             }
           },
           {
+            "name": "deployFSLogixPrivateEndpoint",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Deploy private endpoint for FSLogix storage (recommended for production)",
+            "defaultValue": false,
+            "visible": "[steps('storageMonitoring').deployFSLogix]",
+            "toolTip": "Deploys a private endpoint in the private endpoint subnet and disables public storage access. Requires a private endpoint subnet — created automatically in Greenfield mode. Isolated Brownfield deployments must provide a private endpoint subnet."
+          },
+          {
             "name": "deployMonitoring",
             "type": "Microsoft.Common.CheckBox",
             "label": "Deploy Log Analytics monitoring",
@@ -763,6 +771,7 @@
       "adminPassword": "[steps('access').adminPassword]",
       "deployFSLogix": "[steps('storageMonitoring').deployFSLogix]",
       "storageAccountName": "[steps('storageMonitoring').storageAccountName]",
+      "deployFSLogixPrivateEndpoint": "[steps('storageMonitoring').deployFSLogixPrivateEndpoint]",
       "deployMonitoring": "[steps('storageMonitoring').deployMonitoring]",
       "avdUserObjectIds": "[steps('access').avdUserObjectIds]",
       "desktopAccessAssignments": "[steps('access').desktopAssignments]",

@@ -101,6 +101,9 @@ param storageAccountName string
 @description('Deploy monitoring (Log Analytics)')
 param deployMonitoring bool = true
 
+@description('Deploy a private endpoint for the FSLogix storage account and disable public network access. Requires a private endpoint subnet (created automatically in Greenfield mode).')
+param deployFSLogixPrivateEndpoint bool = false
+
 @description('Choose whether to use an existing VNet or create a new spoke VNet for the deployment.')
 @allowed(['UseExistingVnet', 'CreateNewVnet'])
 param networkMode string = 'UseExistingVnet'
@@ -201,6 +204,7 @@ module network 'modules/network.bicep' = if (networkMode == 'CreateNewVnet') {
     privateEndpointSubnetName: newPrivateEndpointSubnetName
     privateEndpointSubnetPrefix: newPrivateEndpointSubnetPrefix
     hubVnetResourceId: hubVnetResourceId
+    removeStorageServiceEndpoint: deployFSLogixPrivateEndpoint
     tags: tags
   }
 }
@@ -278,8 +282,26 @@ module fslogix 'modules/fslogix.bicep' = if (deployFSLogix) {
     location: location
     storageAccountName: storageAccountName
     sessionHostSubnetId: sessionHostSubnetId
+    deployPrivateEndpoint: deployFSLogixPrivateEndpoint
     tags: tags
   }
+}
+
+// ── FSLogix Private Endpoint + Private DNS (optional) ──
+// Deploys a private endpoint in snet-avd-privateendpoints and a
+// privatelink.file.core.windows.net DNS zone linked to the spoke VNet.
+// Session hosts resolve the storage FQDN to the private IP automatically.
+
+module fslogixDns 'modules/fslogixPrivateDns.bicep' = if (deployFSLogix && deployFSLogixPrivateEndpoint) {
+  name: 'deploy-fslogix-pe'
+  params: {
+    location: location
+    storageAccountId: deployFSLogix ? fslogix!.outputs.storageAccountId : ''
+    privateEndpointSubnetId: privateEndpointSubnetId
+    vnetId: vnetId
+    tags: tags
+  }
+  dependsOn: [fslogix]
 }
 
 // ── Monitoring ──
@@ -355,6 +377,7 @@ output vnetId string = vnetId
 output privateEndpointSubnetId string = privateEndpointSubnetId
 output sessionHostVmNames array = sessionHosts.outputs.vmNames
 output fslogixStorageAccount string = deployFSLogix ? fslogix!.outputs.storageAccountName : 'N/A'
+output fslogixPrivateEndpointId string = (deployFSLogix && deployFSLogixPrivateEndpoint) ? fslogixDns!.outputs.privateEndpointId : 'N/A'
 output logAnalyticsWorkspace string = deployMonitoring ? monitoring!.outputs.workspaceName : 'N/A'
 output effectiveAvdMode string = effectiveAvdMode
 output avdRolesAssigned bool = length(desktopEffectiveAssignments) > 0 || length(remoteAppEffectiveAssignments) > 0
