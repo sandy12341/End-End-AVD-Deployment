@@ -253,15 +253,23 @@
             }
           },
           {
+            "name": "imageVersionsApi",
+            "type": "Microsoft.Solutions.ArmApiControl",
+            "request": {
+              "method": "GET",
+              "path": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)), not(empty(steps('instanceDetails').galleryImageDefinitionName)))), concat(steps('instanceDetails').galleryPicker.id, '/images/', steps('instanceDetails').galleryImageDefinitionName, '/versions?api-version=2022-08-03'), concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups?api-version=2021-04-01'))]"
+            }
+          },
+          {
             "name": "galleryImageVersion",
-            "type": "Microsoft.Common.TextBox",
+            "type": "Microsoft.Common.DropDown",
             "label": "Gallery image version",
-            "defaultValue": "latest",
+            "placeholder": "Select a version...",
             "visible": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
+            "toolTip": "Select the image version to deploy. Versions are listed from the selected image definition.",
             "constraints": {
               "required": "[equals(steps('instanceDetails').imageSource, 'AzureComputeGallery')]",
-              "regex": "^latest$|^[0-9]+\\.[0-9]+\\.[0-9]+$",
-              "validationMessage": "Enter 'latest' or a version number like 1.0.0."
+              "allowedValues": "[map(if(contains(steps('instanceDetails').imageVersionsApi, 'value'), steps('instanceDetails').imageVersionsApi.value, take(split('x', ','), 0)), (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.name, '\"}')))]"
             }
           },
           {
