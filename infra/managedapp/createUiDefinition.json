@@ -298,7 +298,7 @@
             "name": "avdMode",
             "type": "Microsoft.Common.DropDown",
             "label": "AVD Mode",
-            "defaultValue": "Pooled Desktop + RemoteApp",
+            "defaultValue": "PooledDesktopAndRemoteApp",
             "constraints": {
               "required": true,
               "allowedValues": [
