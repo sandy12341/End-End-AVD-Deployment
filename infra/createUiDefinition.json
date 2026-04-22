@@ -302,10 +302,12 @@
           {
             "name": "hostPoolType",
             "type": "Microsoft.Common.DropDown",
-            "label": "Host Pool Type",
+            "label": "Host Pool Type (Legacy only)",
             "defaultValue": "Pooled",
+            "visible": "[equals(steps('instanceDetails').avdMode, '')]",
+            "toolTip": "Only used when AVD Mode is Legacy pooled desktop. Other AVD modes set the correct host pool type automatically.",
             "constraints": {
-              "required": true,
+              "required": "[equals(steps('instanceDetails').avdMode, '')]",
               "allowedValues": [
                 {
                   "label": "Pooled",
@@ -765,7 +767,7 @@
       "galleryImageDefinitionName": "[steps('instanceDetails').galleryImageDefinitionName]",
       "galleryImageVersion": "[steps('instanceDetails').galleryImageVersion]",
       "avdMode": "[steps('instanceDetails').avdMode]",
-      "hostPoolType": "[steps('instanceDetails').hostPoolType]",
+      "hostPoolType": "[if(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), 'Personal', if(equals(steps('instanceDetails').avdMode, ''), steps('instanceDetails').hostPoolType, 'Pooled'))]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
       "adminUsername": "[steps('access').adminUsername]",
       "adminPassword": "[steps('access').adminPassword]",
