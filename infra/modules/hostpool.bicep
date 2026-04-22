@@ -59,6 +59,7 @@ resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2024-04-08-preview'
   location: location
   tags: tags
   properties: {
+    managementType: 'Standard'
     hostPoolType: hostPoolType
     loadBalancerType: loadBalancerType
     maxSessionLimit: maxSessionLimit

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.30.3.12046",
-      "templateHash": "2573978129934216077"
+      "templateHash": "4832263146749691906"
     }
   },
   "parameters": {
@@ -488,7 +488,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.30.3.12046",
-              "templateHash": "3838883416692142405"
+              "templateHash": "9324144420584531279"
             }
           },
           "parameters": {
@@ -544,6 +544,13 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Optional resource ID of the hub virtual network to peer with the new spoke VNet."
+              }
+            },
+            "removeStorageServiceEndpoint": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "When true, omits the Microsoft.Storage service endpoint from the session host subnet. Set to true when a private endpoint is used for FSLogix storage."
               }
             },
             "tags": {
@@ -617,25 +624,49 @@
                       "natGateway": {
                         "id": "[resourceId('Microsoft.Network/natGateways', format('{0}-natgw', parameters('vnetName')))]"
                       },
-                      "serviceEndpoints": [
-                        {
-                          "service": "Microsoft.Storage"
-                        }
-                      ]
+                      "serviceEndpoints": "[if(parameters('removeStorageServiceEndpoint'), createArray(), createArray(createObject('service', 'Microsoft.Storage')))]"
                     }
                   },
                   {
                     "name": "[parameters('privateEndpointSubnetName')]",
                     "properties": {
-                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]"
+                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-avd-privateendpoints')]"
+                      }
                     }
                   }
                 ]
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/natGateways', format('{0}-natgw', parameters('vnetName')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-avd-privateendpoints')]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-avd-sessionhosts')]"
               ]
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2024-01-01",
+              "name": "nsg-avd-privateendpoints",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "priority": 4096,
+                      "direction": "Inbound",
+                      "access": "Deny",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
             },
             {
               "type": "Microsoft.Network/networkSecurityGroups",
@@ -645,19 +676,6 @@
               "tags": "[parameters('tags')]",
               "properties": {
                 "securityRules": [
-                  {
-                    "name": "AllowRDP",
-                    "properties": {
-                      "priority": 1000,
-                      "direction": "Inbound",
-                      "access": "Allow",
-                      "protocol": "Tcp",
-                      "sourceAddressPrefix": "VirtualNetwork",
-                      "sourcePortRange": "*",
-                      "destinationAddressPrefix": "*",
-                      "destinationPortRange": "3389"
-                    }
-                  },
                   {
                     "name": "DenyAllInbound",
                     "properties": {
@@ -835,7 +853,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.30.3.12046",
-              "templateHash": "10825543000310365427"
+              "templateHash": "11795662340951262438"
             }
           },
           "parameters": {
@@ -968,6 +986,7 @@
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "properties": {
+                "managementType": "Standard",
                 "hostPoolType": "[parameters('hostPoolType')]",
                 "loadBalancerType": "[parameters('loadBalancerType')]",
                 "maxSessionLimit": "[parameters('maxSessionLimit')]",
@@ -1147,7 +1166,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.30.3.12046",
-              "templateHash": "14047559784368164342"
+              "templateHash": "10463799831990886269"
             }
           },
           "parameters": {
@@ -1275,6 +1294,7 @@
             "domainJoinUserEffective": "[if(or(contains(parameters('domainJoinUsername'), '\\'), contains(parameters('domainJoinUsername'), '@')), parameters('domainJoinUsername'), format('{0}@{1}', parameters('domainJoinUsername'), parameters('domainFqdn')))]",
             "domainJoinOuPathNormalized": "[if(empty(parameters('domainJoinOuPath')), '', replace(parameters('domainJoinOuPath'), ', ', ','))]",
             "installScriptContent": "param(\r\n    [Parameter(Mandatory=$true)]\r\n    [string]$HostPoolResourceId\r\n)\r\n\r\n$ErrorActionPreference = 'Stop'\r\n$ProgressPreference = 'SilentlyContinue'\r\n\r\n# Azure's internal DNS (168.63.129.16) is always reachable inside any Azure VNet.\r\n# If the VNet uses a custom DNS server that cannot forward public queries, inject\r\n# Azure DNS as a fallback on the NIC so that public Microsoft hostnames resolve.\r\nfunction Ensure-AzureDnsFallback {\r\n    $azureDns = '168.63.129.16'\r\n    $adapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notmatch 'Loopback' } | Select-Object -First 1\r\n    if (-not $adapter) { Write-Output \"No active adapter found; skipping DNS fallback injection.\"; return }\r\n\r\n    $current = (Get-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4).ServerAddresses\r\n    if ($azureDns -notin $current) {\r\n        $updated = @($current) + $azureDns\r\n        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses $updated\r\n        Write-Output \"Injected Azure DNS ($azureDns) as fallback on adapter '$($adapter.Name)'. Current list: $($updated -join ', ')\"\r\n        # Flush the cache so the new server is tried immediately\r\n        Clear-DnsClientCache\r\n    } else {\r\n        Write-Output \"Azure DNS ($azureDns) already present; DNS fallback not needed.\"\r\n    }\r\n}\r\n\r\nfunction Download-WithFallback {\r\n    param(\r\n        [Parameter(Mandatory=$true)]\r\n        [string[]]$Uris,\r\n        [Parameter(Mandatory=$true)]\r\n        [string]$OutFile,\r\n        [Parameter(Mandatory=$true)]\r\n        [string]$ArtifactName\r\n    )\r\n\r\n    $errors = @()\r\n    $dnsFallbackApplied = $false\r\n\r\n    foreach ($uri in $Uris) {\r\n        # Retry each URI up to twice: once normally, once after Azure DNS injection if the\r\n        # first attempt is a name-resolution failure.\r\n        for ($attempt = 1; $attempt -le 2; $attempt++) {\r\n            try {\r\n                Write-Output \"Downloading $ArtifactName from $uri (attempt $attempt)\"\r\n                Invoke-WebRequest -Uri $uri -OutFile $OutFile -UseBasicParsing\r\n                if ((Test-Path $OutFile) -and (Get-Item $OutFile).Length -gt 0) {\r\n                    Write-Output \"Downloaded $ArtifactName ($((Get-Item $OutFile).Length) bytes)\"\r\n                    return\r\n                }\r\n                $errors += \"${uri}: downloaded empty file\"\r\n                break\r\n            } catch {\r\n                $msg = $_.Exception.Message\r\n                $isDnsFailure = ($msg -match 'remote name could not be resolved' -or $msg -match 'NameResolutionFailure' -or $msg -match 'DNS')\r\n                if ($isDnsFailure -and -not $dnsFallbackApplied -and $attempt -eq 1) {\r\n                    Write-Output \"DNS failure detected for $uri - injecting Azure DNS fallback and retrying...\"\r\n                    Ensure-AzureDnsFallback\r\n                    $dnsFallbackApplied = $true\r\n                    # continue loop to attempt == 2\r\n                } else {\r\n                    $errors += \"${uri} (attempt $attempt): $msg\"\r\n                    break\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    $errorsJoined = ($errors -join [Environment]::NewLine)\r\n    throw (\"Failed to download {0}. Attempts:{1}{2}\" -f $ArtifactName, [Environment]::NewLine, $errorsJoined)\r\n}\r\n\r\n$bootLoaderUris = @(\r\n    'https://go.microsoft.com/fwlink/?linkid=2311028',\r\n    'https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrxrH'\r\n)\r\n\r\n$rdAgentUris = @(\r\n    'https://go.microsoft.com/fwlink/?linkid=2310011',\r\n    'https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrmXv'\r\n)\r\n\r\n# Proactively inject Azure DNS fallback when the VM is being provisioned.\r\nWrite-Output \"Ensuring Azure DNS fallback is configured before AVD downloads...\"\r\nEnsure-AzureDnsFallback\r\n\r\n# Download AVD agent MSIs first (before token retrieval, so token is as fresh as possible)\r\nDownload-WithFallback -Uris $bootLoaderUris -OutFile \"$env:TEMP\\BootLoader.msi\" -ArtifactName 'AVD BootLoader'\r\nDownload-WithFallback -Uris $rdAgentUris -OutFile \"$env:TEMP\\RDAgent.msi\" -ArtifactName 'AVD RD Agent'\r\nWrite-Output \"Both MSIs downloaded.\"\r\n\r\n# Retrieve registration token from host pool using VM managed identity\r\nWrite-Output \"Retrieving registration token via managed identity...\"\r\n$registrationToken = $null\r\nfor ($retry = 1; $retry -le 18; $retry++) {\r\n    try {\r\n        $imdsUrl = 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/'\r\n        $tokenResponse = Invoke-RestMethod -Uri $imdsUrl -Headers @{Metadata='true'} -Method GET\r\n        $accessToken = $tokenResponse.access_token\r\n        $apiUrl = \"https://management.azure.com${HostPoolResourceId}/retrieveRegistrationToken?api-version=2024-04-08-preview\"\r\n        $headers = @{ Authorization = \"Bearer $accessToken\"; 'Content-Type' = 'application/json' }\r\n        $regResponse = Invoke-RestMethod -Uri $apiUrl -Method POST -Headers $headers -Body '{}'\r\n        $registrationToken = $regResponse.token\r\n        if ($registrationToken) {\r\n            Write-Output \"Registration token retrieved (attempt $retry).\"\r\n            break\r\n        }\r\n    } catch {\r\n        Write-Output \"Attempt $retry failed: $($_.Exception.Message)\"\r\n        if ($retry -lt 18) { Start-Sleep -Seconds 10 }\r\n    }\r\n}\r\nif (-not $registrationToken) {\r\n    Write-Error \"Failed to retrieve registration token after 18 attempts.\"\r\n    exit 1\r\n}\r\n\r\n# Install AVD BootLoader (MSI already downloaded)\r\nWrite-Output \"Installing AVD BootLoader...\"\r\nStart-Process msiexec.exe -Wait -ArgumentList '/i', \"$env:TEMP\\BootLoader.msi\", '/quiet', '/norestart'\r\n\r\n# Install AVD RD Agent (MSI already downloaded)\r\nWrite-Output \"Installing AVD RD Agent...\"\r\nStart-Process msiexec.exe -Wait -ArgumentList '/i', \"$env:TEMP\\RDAgent.msi\", '/quiet', '/norestart'\r\n\r\n# Configure registration via registry\r\nWrite-Output \"Configuring AVD agent registration...\"\r\nStop-Service RDAgentBootLoader -Force -ErrorAction SilentlyContinue\r\nStop-Service RdAgent -Force -ErrorAction SilentlyContinue\r\nStart-Sleep -Seconds 5\r\n\r\nSet-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\RDInfraAgent' -Name RegistrationToken -Value $registrationToken\r\nSet-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\RDInfraAgent' -Name IsRegistered -Value 0\r\n\r\nSet-Service RdAgent -StartupType Automatic\r\nSet-Service RDAgentBootLoader -StartupType Automatic\r\nStart-Service RdAgent\r\nStart-Sleep -Seconds 5\r\nStart-Service RDAgentBootLoader\r\n\r\n# Wait for registration with retry (up to 3 attempts, 120s each, 30s pause between)\r\nfor ($attempt = 1; $attempt -le 3; $attempt++) {\r\n    Write-Output \"Registration attempt $attempt of 3...\"\r\n    for ($wait = 0; $wait -lt 120; $wait += 10) {\r\n        Start-Sleep -Seconds 10\r\n        $isReg = (Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\RDInfraAgent' -ErrorAction SilentlyContinue).IsRegistered\r\n        $rdAgentStatus = (Get-Service RdAgent -ErrorAction SilentlyContinue).Status\r\n        $bootLoaderStatus = (Get-Service RDAgentBootLoader -ErrorAction SilentlyContinue).Status\r\n        if ($isReg -eq 1) {\r\n            Start-Sleep -Seconds 20\r\n            $rdAgentStatus = (Get-Service RdAgent -ErrorAction SilentlyContinue).Status\r\n            $bootLoaderStatus = (Get-Service RDAgentBootLoader -ErrorAction SilentlyContinue).Status\r\n            if ($rdAgentStatus -eq 'Running' -and $bootLoaderStatus -eq 'Running') {\r\n                Write-Output \"AVD agent registered successfully (attempt $attempt).\"\r\n                exit 0\r\n            }\r\n\r\n            Write-Output \"Registered, but agent services are not healthy: RdAgent=$rdAgentStatus RDAgentBootLoader=$bootLoaderStatus\"\r\n            break\r\n        }\r\n\r\n        if ($rdAgentStatus -ne 'Running' -or $bootLoaderStatus -ne 'Running') {\r\n            Write-Output \"Agent services unhealthy during registration wait: RdAgent=$rdAgentStatus RDAgentBootLoader=$bootLoaderStatus\"\r\n            break\r\n        }\r\n    }\r\n\r\n    if ($attempt -lt 3) {\r\n        Write-Output \"Not registered yet. Waiting 30s before retry...\"\r\n        Start-Sleep -Seconds 30\r\n        Stop-Service RDAgentBootLoader -Force -ErrorAction SilentlyContinue\r\n        Stop-Service RdAgent -Force -ErrorAction SilentlyContinue\r\n        Start-Sleep -Seconds 5\r\n        Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\RDInfraAgent' -Name IsRegistered -Value 0\r\n        Start-Service RdAgent\r\n        Start-Sleep -Seconds 5\r\n        Start-Service RDAgentBootLoader\r\n    }\r\n}\r\n\r\n$finalStatus = (Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\RDInfraAgent' -ErrorAction SilentlyContinue).IsRegistered\r\n$finalRdAgentStatus = (Get-Service RdAgent -ErrorAction SilentlyContinue).Status\r\n$finalBootLoaderStatus = (Get-Service RDAgentBootLoader -ErrorAction SilentlyContinue).Status\r\nWrite-Output \"Final registration status: IsRegistered=$finalStatus\"\r\nWrite-Output \"Final service status: RdAgent=$finalRdAgentStatus RDAgentBootLoader=$finalBootLoaderStatus\"\r\nif ($finalStatus -ne 1 -or $finalRdAgentStatus -ne 'Running' -or $finalBootLoaderStatus -ne 'Running') { exit 1 }\r\nexit 0\r\n",
+            "entraJoinNetworkPrepScriptContent": "$ErrorActionPreference = 'Stop'\r\n\r\n$azureDnsFallback = '168.63.129.16'\r\n\r\n$dnsConfigs = Get-DnsClientServerAddress -AddressFamily IPv4 |\r\n    Where-Object {\r\n        $_.InterfaceAlias -notlike 'Loopback*' -and\r\n        @($_.ServerAddresses | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count -gt 0\r\n    }\r\n\r\nforeach ($dnsConfig in $dnsConfigs) {\r\n    $servers = @($dnsConfig.ServerAddresses | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })\r\n\r\n    if ($servers -contains $azureDnsFallback) {\r\n        continue\r\n    }\r\n\r\n    Set-DnsClientServerAddress -InterfaceIndex $dnsConfig.InterfaceIndex -ServerAddresses ($servers + $azureDnsFallback)\r\n}\r\n\r\nClear-DnsClientCache",
             "desktopVirtContributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '082f0a83-3be5-4ba1-904c-961cca79b387')]"
           },
           "resources": [
@@ -1377,6 +1397,27 @@
             },
             {
               "copy": {
+                "name": "prepareEntraJoinNetworking",
+                "count": "[length(range(0, parameters('sessionHostCount')))]"
+              },
+              "condition": "[equals(parameters('authenticationType'), 'EntraID')]",
+              "type": "Microsoft.Compute/virtualMachines/runCommands",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', format('{0}-{1}', parameters('vmNamePrefix'), range(0, parameters('sessionHostCount'))[range(0, parameters('sessionHostCount'))[copyIndex()]]), 'PrepareEntraJoinNetworking')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "source": {
+                  "script": "[variables('entraJoinNetworkPrepScriptContent')]"
+                },
+                "timeoutInSeconds": 900
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmNamePrefix'), range(0, parameters('sessionHostCount'))[range(0, parameters('sessionHostCount'))[copyIndex()]]))]"
+              ]
+            },
+            {
+              "copy": {
                 "name": "aadJoin",
                 "count": "[length(range(0, parameters('sessionHostCount')))]"
               },
@@ -1393,6 +1434,7 @@
                 "autoUpgradeMinorVersion": true
               },
               "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines/runCommands', format('{0}-{1}', parameters('vmNamePrefix'), range(0, parameters('sessionHostCount'))[range(0, parameters('sessionHostCount'))[range(0, parameters('sessionHostCount'))[copyIndex()]]]), 'PrepareEntraJoinNetworking')]",
                 "[resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmNamePrefix'), range(0, parameters('sessionHostCount'))[range(0, parameters('sessionHostCount'))[copyIndex()]]))]"
               ]
             },
@@ -1538,7 +1580,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.30.3.12046",
-              "templateHash": "4726067882724199636"
+              "templateHash": "5864940544571610620"
             }
           },
           "parameters": {
@@ -1579,16 +1621,19 @@
               "type": "string",
               "defaultValue": "",
               "metadata": {
-                "description": "Session host subnet ID for VNet service endpoint access"
+                "description": "Session host subnet ID for VNet service endpoint access (used when deployPrivateEndpoint is false)"
+              }
+            },
+            "deployPrivateEndpoint": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "When true, disables public network access on the storage account. A private endpoint must be deployed separately."
               }
             }
           },
           "variables": {
-            "storageNetworkAcls": {
-              "defaultAction": "Deny",
-              "bypass": "AzureServices",
-              "virtualNetworkRules": "[if(not(empty(parameters('sessionHostSubnetId'))), createArray(createObject('id', parameters('sessionHostSubnetId'), 'action', 'Allow')), createArray())]"
-            }
+            "storageNetworkAcls": "[if(parameters('deployPrivateEndpoint'), createObject('defaultAction', 'Deny', 'bypass', 'None', 'virtualNetworkRules', createArray()), createObject('defaultAction', 'Deny', 'bypass', 'AzureServices', 'virtualNetworkRules', if(not(empty(parameters('sessionHostSubnetId'))), createArray(createObject('id', parameters('sessionHostSubnetId'), 'action', 'Allow')), createArray())))]"
           },
           "resources": [
             {
@@ -1606,6 +1651,7 @@
                 "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
                 "allowSharedKeyAccess": false,
+                "publicNetworkAccess": "[if(parameters('deployPrivateEndpoint'), 'Disabled', 'Enabled')]",
                 "networkAcls": "[variables('storageNetworkAcls')]"
               }
             },
@@ -1650,6 +1696,9 @@
                   },
                   "sessionHostSubnetId": {
                     "value": "[parameters('sessionHostSubnetId')]"
+                  },
+                  "deployPrivateEndpoint": {
+                    "value": "[parameters('deployPrivateEndpoint')]"
                   }
                 },
                 "template": {
@@ -1659,7 +1708,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.30.3.12046",
-                      "templateHash": "17020050856289694156"
+                      "templateHash": "10391284724477328974"
                     }
                   },
                   "parameters": {
@@ -1688,14 +1737,17 @@
                       "metadata": {
                         "description": "Session host subnet ID for VNet service endpoint access"
                       }
+                    },
+                    "deployPrivateEndpoint": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "When true, disables public network access and removes VNet rules (private endpoint in use)"
+                      }
                     }
                   },
                   "variables": {
-                    "storageNetworkAcls": {
-                      "defaultAction": "Deny",
-                      "bypass": "AzureServices",
-                      "virtualNetworkRules": "[if(not(empty(parameters('sessionHostSubnetId'))), createArray(createObject('id', parameters('sessionHostSubnetId'), 'action', 'Allow')), createArray())]"
-                    }
+                    "storageNetworkAcls": "[if(parameters('deployPrivateEndpoint'), createObject('defaultAction', 'Deny', 'bypass', 'None', 'virtualNetworkRules', createArray()), createObject('defaultAction', 'Deny', 'bypass', 'AzureServices', 'virtualNetworkRules', if(not(empty(parameters('sessionHostSubnetId'))), createArray(createObject('id', parameters('sessionHostSubnetId'), 'action', 'Allow')), createArray())))]"
                   },
                   "resources": [
                     {
@@ -1713,6 +1765,7 @@
                         "supportsHttpsTrafficOnly": true,
                         "allowBlobPublicAccess": false,
                         "allowSharedKeyAccess": false,
+                        "publicNetworkAccess": "[if(parameters('deployPrivateEndpoint'), 'Disabled', 'Enabled')]",
                         "azureFilesIdentityBasedAuthentication": {
                           "directoryServiceOptions": "AADKERB"
                         },

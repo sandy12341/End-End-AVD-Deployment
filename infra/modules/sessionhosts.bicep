@@ -65,6 +65,7 @@ var domainJoinOuPathNormalized = empty(domainJoinOuPath) ? '' : replace(domainJo
 // Embed install script content at compile time to avoid runtime dependency on
 // external DNS resolution for raw.githubusercontent.com.
 var installScriptContent = loadTextContent('../scripts/Install-AVDAgent.ps1')
+var entraJoinNetworkPrepScriptContent = loadTextContent('../scripts/Prepare-EntraJoinNetworking.ps1')
 
 // Reference existing host pool for role assignment and token retrieval
 resource existingHostPool 'Microsoft.DesktopVirtualization/hostPools@2024-04-08-preview' existing = {
@@ -156,6 +157,23 @@ resource vmRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   }
 ]
 
+// Ensure the guest can still resolve public Entra endpoints when the VNet uses
+// custom DNS servers that do not recurse externally.
+resource prepareEntraJoinNetworking 'Microsoft.Compute/virtualMachines/runCommands@2023-09-01' = [
+  for i in range(0, sessionHostCount): if (authenticationType == 'EntraID') {
+    parent: sessionHosts[i]
+    name: 'PrepareEntraJoinNetworking'
+    location: location
+    tags: tags
+    properties: {
+      source: {
+        script: entraJoinNetworkPrepScriptContent
+      }
+      timeoutInSeconds: 900
+    }
+  }
+]
+
 // Entra ID (AAD) join extension
 resource aadJoin 'Microsoft.Compute/virtualMachines/extensions@2024-07-01' = [
   for i in range(0, sessionHostCount): if (authenticationType == 'EntraID') {
@@ -169,6 +187,7 @@ resource aadJoin 'Microsoft.Compute/virtualMachines/extensions@2024-07-01' = [
       typeHandlerVersion: '2.2'
       autoUpgradeMinorVersion: true
     }
+    dependsOn: [prepareEntraJoinNetworking[i]]
   }
 ]
 

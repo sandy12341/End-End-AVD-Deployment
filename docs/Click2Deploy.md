@@ -155,6 +155,7 @@ Azure creates:
 
 Host pool configuration includes:
 
+- `managementType: Standard` so pooled host pools use the classic self-managed session host flow instead of the 2024-04-08-preview API default of `Automated`
 - `Pooled` or `Personal`, derived from `avdMode` when it is provided and otherwise from the legacy `hostPoolType`
 - `BreadthFirst` load balancing by default
 - `startVMOnConnect: true`
@@ -237,8 +238,9 @@ For each requested session host, Azure creates:
 2. A Windows 11 multi-session VM
 3. A system-assigned managed identity on the VM
 4. A role assignment for the VM identity on the host pool
-5. The `AADLoginForWindows` extension
-6. The `InstallAVDAgent` Custom Script Extension
+5. A pre-join networking preparation step that adds Azure DNS fallback
+6. The `AADLoginForWindows` extension
+7. The `InstallAVDAgent` VM RunCommand step
 
 ### VM creation details
 
@@ -298,7 +300,7 @@ When the user selects `CreateNewVnet`, the deployment runs in this order:
 5. After networking completes, ARM starts `deploy-hostpool` and optional `deploy-monitoring`.
 6. After networking completes, ARM starts optional `deploy-fslogix` if FSLogix is enabled.
 7. After both networking and host pool deployment are complete, ARM starts `deploy-sessionhosts`.
-8. Session hosts join Entra ID or Hybrid Join, install the AVD agent, and register into the host pool.
+8. Entra session hosts first add Azure DNS fallback, then join Entra ID, then install the AVD agent and register into the host pool.
 9. After the app groups exist, optional role assignments are applied for desktop access, RemoteApp access, and VM login access.
 
 This means the greenfield path now behaves as a true foundation-first deployment: network first, platform second, compute last.
@@ -321,29 +323,24 @@ What it enables:
 
 Why ordering matters:
 
+- The deployment now prepares DNS before `AADLoginForWindows` runs because Entra device registration needs public Microsoft endpoints such as `enterpriseregistration.windows.net`
 - The AVD agent installation runs only after the VM exists, after the managed identity exists, after the required role assignment is present, and after the Entra join extension is installed
 
 That sequencing avoids registration race conditions.
 
 ---
 
-## 10. What the InstallAVDAgent extension does
+## 10. What the InstallAVDAgent step does
 
-Extension name:
+RunCommand name:
 
 - `InstallAVDAgent`
 
-Publisher/type:
+Resource type:
 
-- `Microsoft.Compute`
-- `CustomScriptExtension`
+- `Microsoft.Compute/virtualMachines/runCommands`
 
-This extension uses the Windows Custom Script Extension `fileUris + commandToExecute` pattern.
-
-1. The extension downloads `Install-AVDAgent.ps1` from the repository's raw GitHub URL.
-2. The extension runs the downloaded script locally on the VM.
-
-This design avoids embedding the full script body into `commandToExecute`, which can fail on Windows with `The command line is too long`.
+This step runs the embedded `Install-AVDAgent.ps1` script locally on the VM.
 
 ### Script flow inside the VM
 

@@ -256,7 +256,7 @@ No cross-tenant permissions needed — each user manages their own deployed reso
 
 - **Delivery Modes**: `PersonalDesktop`, `PooledRemoteApp`, and `PooledDesktopAndRemoteApp`, with legacy `hostPoolType` fallback for existing desktop-only deployments
 - **Image Source**: Session hosts can deploy from Marketplace or Azure Compute Gallery images
-- **Host Pool**: Pooled (BreadthFirst) or Personal, with Start VM on Connect
+- **Host Pool**: Standard-managed pooled (BreadthFirst) or personal, with Start VM on Connect
 - **Session Hosts**: Windows 11 24H2 Multi-Session, Entra ID joined, System Assigned Managed Identity
 - **FSLogix**: Azure Files share for user profile containers (Entra ID Kerberos auth, VNet-restricted)
 - **Networking**: Supports brownfield deployments into an existing VNet or greenfield deployments that create a spoke VNet and peer it to a selected hub VNet

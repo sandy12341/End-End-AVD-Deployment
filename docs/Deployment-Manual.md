@@ -75,10 +75,12 @@ Session host VMs require **outbound internet access** to:
 | `169.254.169.254` | Azure Instance Metadata Service (IMDS) — used for managed identity token retrieval |
 | `management.azure.com` | ARM API — used by the VM to retrieve the host pool registration token |
 | `query.prod.cms.rt.microsoft.com` | Microsoft download CDN — AVD BootLoader and RDAgent MSI downloads |
+| `enterpriseregistration.windows.net` | Microsoft Entra device registration discovery and join |
+| `pas.windows.net` | Microsoft Entra device registration service dependency |
 
-> **Note:** `raw.githubusercontent.com` is required for the current Deploy to Azure flow because the Custom Script Extension downloads `Install-AVDAgent.ps1` from the repository at runtime. This avoids the Windows `The command line is too long` failure caused by embedding the full script body into `commandToExecute`.
+> **Note:** The deployment now embeds its guest scripts inline with VM RunCommand, so it no longer depends on `raw.githubusercontent.com` at deployment time.
 
-> **Important:** If a firewall or NSG blocks outbound access to any of these endpoints, the agent installation will fail silently. The CSE (Custom Script Extension) will time out and the session host will not register.
+> **Important:** If custom DNS servers on the session host subnet cannot resolve the Microsoft Entra registration endpoints, `AADLoginForWindows` can report `Succeeded` while the guest remains unjoined. The deployment now adds Azure DNS fallback before the Entra join step to avoid that failure mode.
 
 ---
 
@@ -97,14 +99,15 @@ The deployment is fully automated — a single ARM template deployment creates a
 │  T+20s    Host Pool + Desktop/RemoteApp Groups + Workspace created       │
 │  T+30s    Session Host VMs begin provisioning                            │
 │  T+60s    NICs created, VMs provisioning in parallel                     │
-│  T+90s    Entra ID Join extension installs on each VM                    │
-│  T+120s   Role assignment (Desktop Virtualization Contributor) applied   │
-│  T+150s   Custom Script Extension begins (Install-AVDAgent.ps1)         │
-│  T+180s   Script retrieves registration token via managed identity       │
-│  T+210s   BootLoader + RDAgent MSIs installed                            │
-│  T+240s   Agent registers with host pool (registry key loop)             │
-│  T+300s   Session hosts show "Available" in host pool                    │
-│  T+360s   Deployment completes (~6 minutes total)                        │
+│  T+90s    Entra join networking prep adds Azure DNS fallback             │
+│  T+120s   Entra ID Join extension installs on each VM                    │
+│  T+150s   Role assignment (Desktop Virtualization Contributor) applied   │
+│  T+180s   VM RunCommand begins (Install-AVDAgent.ps1)                    │
+│  T+210s   Script retrieves registration token via managed identity       │
+│  T+240s   BootLoader + RDAgent MSIs installed                            │
+│  T+270s   Agent registers with host pool (registry key loop)             │
+│  T+330s   Session hosts show "Available" in host pool                    │
+│  T+390s   Deployment completes (~6.5 minutes total)                      │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -214,8 +217,9 @@ main.bicep (orchestrator)
   │      ├── NICs
   │      ├── VMs (System Assigned Managed Identity)
   │      ├── Role Assignment (Desktop Virtualization Contributor → each VM)
+  │      ├── Entra Join Networking Prep (adds Azure DNS fallback)
   │      ├── Entra ID Join Extension (AADLoginForWindows)
-  │      └── Custom Script Extension (Install-AVDAgent.ps1)
+  │      └── VM RunCommand (Install-AVDAgent.ps1)
   │            ├── Retrieves registration token via IMDS + ARM API
   │            ├── Downloads + installs BootLoader MSI
   │            ├── Downloads + installs RDAgent MSI
@@ -228,7 +232,7 @@ main.bicep (orchestrator)
          └── Log Analytics Workspace
 ```
 
-> **Key dependency**: The Custom Script Extension (`InstallAVDAgent`) has an explicit `dependsOn` on both the Entra ID Join extension and the Role Assignment. This ensures the VM has its managed identity role active before it attempts to retrieve the registration token.
+> **Key dependency**: The Entra path now runs in three stages: DNS fallback prep, `AADLoginForWindows`, then `InstallAVDAgent`. This ensures the guest can resolve Microsoft Entra registration endpoints before device join begins, and that the VM's managed identity role is active before it attempts to retrieve the registration token.
 
 > **Computer name uniqueness**: The session host module now includes a per-deployment seed when generating the Windows computer name. This prevents a fresh redeployment into the same resource group name from reusing the same Entra device hostname and hitting `error_hostname_duplicate` during `AADLoginForWindows`.
 
@@ -254,7 +258,7 @@ AVD-Landing-Zone/
     │   ├── fslogix.bicep              # Azure Files storage for user profiles
     │   └── monitoring.bicep           # Log Analytics workspace
     └── scripts/
-        └── Install-AVDAgent.ps1       # PowerShell script that runs inside each VM via CSE
+        └── Install-AVDAgent.ps1       # PowerShell script that runs inside each VM via VM RunCommand
 ```
 
 ### 3.1 `infra/main.bicep` — Main Orchestrator
@@ -349,7 +353,7 @@ az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
 
 | Resource | Type | Details |
 |---|---|---|
-| **Host Pool** | `Microsoft.DesktopVirtualization/hostPools` | Load balancer: BreadthFirst. Max sessions: 10. Start VM on Connect: enabled. |
+| **Host Pool** | `Microsoft.DesktopVirtualization/hostPools` | Standard management. Load balancer: BreadthFirst. Max sessions: 10. Start VM on Connect: enabled. |
 | **Desktop Application Group** | `Microsoft.DesktopVirtualization/applicationGroups` | Created when the selected mode publishes desktops. Type: `Desktop`. |
 | **RemoteApp Application Group** | `Microsoft.DesktopVirtualization/applicationGroups` | Created when the selected mode publishes RemoteApps. Type: `RemoteApp`. |
 | **Published Applications** | `Microsoft.DesktopVirtualization/applicationGroups/applications` | Created only for RemoteApp modes. One child resource per `remoteApps` entry. |
@@ -357,6 +361,7 @@ az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
 
 **Key Configuration Details:**
 
+- **Management Type:** The host pool explicitly sets `managementType: 'Standard'`. With API version `2024-04-08-preview`, pooled host pools otherwise default to `Automated`, which is intended for session host configuration rather than this repo's self-managed VM provisioning flow.
 - **Custom RDP Properties** (baked into the host pool):
   ```
   targetisaadjoined:i:1          → Tells the client this is an Entra ID joined host
@@ -390,8 +395,9 @@ az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
 | **NIC** | `Microsoft.Network/networkInterfaces` | Dynamic private IP in the session hosts subnet. Delete option: Delete (cleaned up with VM). |
 | **VM** | `Microsoft.Compute/virtualMachines` | Windows 11 24H2 Multi-Session. System Assigned Managed Identity enabled. Premium SSD OS disk. License: `Windows_Client` (for Azure Hybrid Benefit). |
 | **Role Assignment** | `Microsoft.Authorization/roleAssignments` | Assigns **Desktop Virtualization Contributor** (`082f0a83-3be5-4ba1-904c-961cca79b387`) to the VM's managed identity, scoped to the host pool. This allows the VM to call the `retrieveRegistrationToken` API. |
-| **Entra ID Join Extension** | `AADLoginForWindows` | Joins the VM to Entra ID. Version 2.2 with auto-upgrade. |
-| **Custom Script Extension** | `InstallAVDAgent` | Downloads and executes `Install-AVDAgent.ps1` from GitHub. Passes the host pool resource ID as a parameter. |
+| **Entra Join Networking Prep** | `Microsoft.Compute/virtualMachines/runCommands` | Adds Azure DNS fallback (`168.63.129.16`) before Entra join so custom DNS does not block device registration. |
+| **Entra ID Join Extension** | `AADLoginForWindows` | Joins the VM to Entra ID after networking prerequisites are in place. Version 2.2 with auto-upgrade. |
+| **VM RunCommand** | `InstallAVDAgent` | Executes the embedded `Install-AVDAgent.ps1` script and passes the host pool resource ID as a parameter. |
 
 **Computer Name Logic:**
 - ARM imposes a 15-character limit on Windows computer names.
@@ -402,12 +408,13 @@ az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
 **Extension Dependency Chain:**
 ```
 VM Created
-  └──► Entra ID Join (AADLoginForWindows)
-         └──► Role Assignment (Desktop Virtualization Contributor)
-                └──► Custom Script Extension (Install-AVDAgent.ps1)
+  └──► Entra Join Networking Prep
+    └──► Entra ID Join (AADLoginForWindows)
+      └──► Role Assignment (Desktop Virtualization Contributor)
+        └──► VM RunCommand (Install-AVDAgent.ps1)
 ```
 
-> The CSE **will not run** until both the Entra ID join and the role assignment are complete. This is enforced via `dependsOn` in the Bicep template.
+> The VM RunCommand step **will not run** until both the Entra ID join and the role assignment are complete. This is enforced via `dependsOn` in the Bicep template.
 
 **Outputs:** `vmNames`, `vmIds`
 
@@ -443,7 +450,7 @@ VM Created
 
 ### 3.9 `infra/scripts/Install-AVDAgent.ps1` — Agent Installation Script
 
-**Purpose:** This PowerShell script runs inside each session host VM via the Custom Script Extension. It is the **critical automation** that eliminates any manual post-deployment steps.
+**Purpose:** This PowerShell script runs inside each session host VM via VM RunCommand. It is the **critical automation** that eliminates any manual post-deployment steps.
 
 **Execution context:** Runs as `SYSTEM` on the VM, with outbound internet access.
 
