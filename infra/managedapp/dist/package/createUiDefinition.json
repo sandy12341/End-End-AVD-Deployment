@@ -319,17 +319,32 @@
             }
           },
           {
-            "name": "hostPoolType",
+            "name": "hostPoolTypePooled",
             "type": "Microsoft.Common.DropDown",
             "label": "Host Pool Type",
             "defaultValue": "Pooled",
+            "visible": "[not(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'))]",
+            "toolTip": "This value follows the selected AVD Mode automatically.",
             "constraints": {
-              "required": true,
+              "required": "[not(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'))]",
               "allowedValues": [
                 {
                   "label": "Pooled",
                   "value": "Pooled"
-                },
+                }
+              ]
+            }
+          },
+          {
+            "name": "hostPoolTypePersonal",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Host Pool Type",
+            "defaultValue": "Personal",
+            "visible": "[equals(steps('instanceDetails').avdMode, 'PersonalDesktop')]",
+            "toolTip": "This value follows the selected AVD Mode automatically.",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').avdMode, 'PersonalDesktop')]",
+              "allowedValues": [
                 {
                   "label": "Personal",
                   "value": "Personal"
@@ -887,7 +902,7 @@
       "galleryImageDefinitionName": "[steps('instanceDetails').galleryImageDefinitionName]",
       "galleryImageVersion": "[steps('instanceDetails').galleryImageVersion]",
       "avdMode": "[if(equals(steps('instanceDetails').avdMode, 'LegacyPooledDesktop'), '', steps('instanceDetails').avdMode)]",
-      "hostPoolType": "[steps('instanceDetails').hostPoolType]",
+      "hostPoolType": "[if(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), steps('instanceDetails').hostPoolTypePersonal, steps('instanceDetails').hostPoolTypePooled)]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
       "adminUsername": "[steps('access').adminUsername]",
       "adminPassword": "[steps('access').adminPassword]",
