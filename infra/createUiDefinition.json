@@ -300,14 +300,37 @@
             }
           },
           {
-            "name": "hostPoolType",
+            "name": "hostPoolTypePooled",
             "type": "Microsoft.Common.DropDown",
             "label": "Host Pool Type",
-            "defaultValue": "[if(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), 'Personal', 'Pooled')]",
+            "defaultValue": "Pooled",
+            "visible": "[not(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'))]",
             "toolTip": "This value follows the selected AVD Mode automatically.",
             "constraints": {
-              "required": true,
-              "allowedValues": "[if(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), createArray(parse('{\"label\":\"Personal\",\"value\":\"Personal\"}')), createArray(parse('{\"label\":\"Pooled\",\"value\":\"Pooled\"}')))]"
+              "required": "[not(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'))]",
+              "allowedValues": [
+                {
+                  "label": "Pooled",
+                  "value": "Pooled"
+                }
+              ]
+            }
+          },
+          {
+            "name": "hostPoolTypePersonal",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Host Pool Type",
+            "defaultValue": "Personal",
+            "visible": "[equals(steps('instanceDetails').avdMode, 'PersonalDesktop')]",
+            "toolTip": "This value follows the selected AVD Mode automatically.",
+            "constraints": {
+              "required": "[equals(steps('instanceDetails').avdMode, 'PersonalDesktop')]",
+              "allowedValues": [
+                {
+                  "label": "Personal",
+                  "value": "Personal"
+                }
+              ]
             }
           }
         ]
@@ -757,7 +780,7 @@
       "galleryImageDefinitionName": "[steps('instanceDetails').galleryImageDefinitionName]",
       "galleryImageVersion": "[steps('instanceDetails').galleryImageVersion]",
       "avdMode": "[steps('instanceDetails').avdMode]",
-      "hostPoolType": "[if(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), 'Personal', if(equals(steps('instanceDetails').avdMode, ''), steps('instanceDetails').hostPoolType, 'Pooled'))]",
+      "hostPoolType": "[if(equals(steps('instanceDetails').avdMode, 'PersonalDesktop'), steps('instanceDetails').hostPoolTypePersonal, steps('instanceDetails').hostPoolTypePooled)]",
       "hostPoolName": "[steps('instanceDetails').hostPoolName]",
       "adminUsername": "[steps('access').adminUsername]",
       "adminPassword": "[steps('access').adminPassword]",
