@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.30.3.12046",
-      "templateHash": "4350826389597180638"
+      "version": "0.42.1.51946",
+      "templateHash": "16761553303260905873"
     }
   },
   "parameters": {
@@ -124,6 +124,18 @@
       "defaultValue": "latest",
       "metadata": {
         "description": "Azure Compute Gallery image version for session hosts when imageSource is AzureComputeGallery."
+      }
+    },
+    "sessionHostSecurityType": {
+      "type": "string",
+      "defaultValue": "Auto",
+      "allowedValues": [
+        "Auto",
+        "Standard",
+        "TrustedLaunch"
+      ],
+      "metadata": {
+        "description": "Session host security type. Auto uses Trusted Launch for Azure Compute Gallery images and Standard for Marketplace images."
       }
     },
     "avdMode": {
@@ -387,6 +399,7 @@
     "desktopEffectiveAssignments": "[union(parameters('desktopAccessAssignments'), if(variables('publishDesktop'), variables('legacyAccessAssignments'), createArray()))]",
     "remoteAppEffectiveAssignments": "[union(parameters('remoteAppAccessAssignments'), if(variables('publishRemoteApps'), variables('legacyAccessAssignments'), createArray()))]",
     "vmLoginEffectiveAssignments": "[union(variables('desktopEffectiveAssignments'), variables('remoteAppEffectiveAssignments'))]",
+    "effectiveSessionHostSecurityType": "[if(or(equals(parameters('sessionHostSecurityType'), 'TrustedLaunch'), and(equals(parameters('sessionHostSecurityType'), 'Auto'), equals(parameters('imageSource'), 'AzureComputeGallery'))), 'TrustedLaunch', 'Standard')]",
     "sessionHostImageReference": "[if(equals(parameters('imageSource'), 'AzureComputeGallery'), createObject('id', resourceId(parameters('galleryImageSubscriptionId'), parameters('galleryImageResourceGroupName'), 'Microsoft.Compute/galleries/images/versions', parameters('galleryName'), parameters('galleryImageDefinitionName'), parameters('galleryImageVersion'))), createObject('publisher', parameters('marketplaceImagePublisher'), 'offer', parameters('marketplaceImageOffer'), 'sku', parameters('marketplaceImageSku'), 'version', parameters('marketplaceImageVersion')))]",
     "tags": {
       "Environment": "[parameters('environment')]",
@@ -403,7 +416,7 @@
       "condition": "[and(variables('publishDesktop'), not(empty(string(variables('desktopEffectiveAssignments')[copyIndex()].principalId))))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[format('Microsoft.DesktopVirtualization/applicationGroups/{0}', variables('desktopAppGroupName'))]",
+      "scope": "[resourceId('Microsoft.DesktopVirtualization/applicationGroups', variables('desktopAppGroupName'))]",
       "name": "[guid(resourceGroup().id, variables('desktopAppGroupName'), string(variables('desktopEffectiveAssignments')[copyIndex()].principalType), string(variables('desktopEffectiveAssignments')[copyIndex()].principalId), '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
       "properties": {
         "principalId": "[string(variables('desktopEffectiveAssignments')[copyIndex()].principalId)]",
@@ -422,7 +435,7 @@
       "condition": "[and(variables('publishRemoteApps'), not(empty(string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalId))))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[format('Microsoft.DesktopVirtualization/applicationGroups/{0}', variables('remoteAppGroupName'))]",
+      "scope": "[resourceId('Microsoft.DesktopVirtualization/applicationGroups', variables('remoteAppGroupName'))]",
       "name": "[guid(resourceGroup().id, variables('remoteAppGroupName'), string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalType), string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalId), '1d18fff3-a72a-46b5-b4a9-0b38a3cd7e63')]",
       "properties": {
         "principalId": "[string(variables('remoteAppEffectiveAssignments')[copyIndex()].principalId)]",
@@ -451,7 +464,7 @@
     {
       "condition": "[equals(parameters('networkMode'), 'CreateNewVnet')]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "deploy-network",
       "properties": {
         "expressionEvaluationOptions": {
@@ -496,8 +509,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.30.3.12046",
-              "templateHash": "9324144420584531279"
+              "version": "0.42.1.51946",
+              "templateHash": "6083087429724800482"
             }
           },
           "parameters": {
@@ -722,7 +735,7 @@
             {
               "condition": "[not(empty(parameters('hubVnetResourceId')))]",
               "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
+              "apiVersion": "2025-04-01",
               "name": "[format('{0}-hub-peering', parameters('vnetName'))]",
               "resourceGroup": "[variables('hubVnetResourceGroupName')]",
               "properties": {
@@ -747,8 +760,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.30.3.12046",
-                      "templateHash": "18232017071347321678"
+                      "version": "0.42.1.51946",
+                      "templateHash": "10704540866986300168"
                     }
                   },
                   "parameters": {
@@ -813,7 +826,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "deploy-hostpool",
       "properties": {
         "expressionEvaluationOptions": {
@@ -861,8 +874,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.30.3.12046",
-              "templateHash": "11795662340951262438"
+              "version": "0.42.1.51946",
+              "templateHash": "15042289621869372309"
             }
           },
           "parameters": {
@@ -1113,7 +1126,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "deploy-sessionhosts",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1130,12 +1143,15 @@
           "vmSize": {
             "value": "[parameters('vmSize')]"
           },
+          "sessionHostSecurityType": {
+            "value": "[variables('effectiveSessionHostSecurityType')]"
+          },
           "imageReference": {
             "value": "[variables('sessionHostImageReference')]"
           },
-          "subnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.sessionHostSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))))]",
+          "subnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2025-04-01').outputs.sessionHostSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))))]",
           "hostPoolName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.hostPoolName.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2025-04-01').outputs.hostPoolName.value]"
           },
           "adminUsername": {
             "value": "[parameters('adminUsername')]"
@@ -1174,8 +1190,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.30.3.12046",
-              "templateHash": "10463799831990886269"
+              "version": "0.42.1.51946",
+              "templateHash": "3746290480659534743"
             }
           },
           "parameters": {
@@ -1199,6 +1215,17 @@
               "defaultValue": "Standard_D2ads_v5",
               "metadata": {
                 "description": "VM size for session hosts"
+              }
+            },
+            "sessionHostSecurityType": {
+              "type": "string",
+              "defaultValue": "Standard",
+              "allowedValues": [
+                "Standard",
+                "TrustedLaunch"
+              ],
+              "metadata": {
+                "description": "Security type for session hosts."
               }
             },
             "subnetId": {
@@ -1324,6 +1351,7 @@
                 "hardwareProfile": {
                   "vmSize": "[parameters('vmSize')]"
                 },
+                "securityProfile": "[if(equals(parameters('sessionHostSecurityType'), 'TrustedLaunch'), createObject('securityType', 'TrustedLaunch', 'uefiSettings', createObject('secureBootEnabled', true(), 'vTpmEnabled', true())), null())]",
                 "storageProfile": {
                   "osDisk": {
                     "createOption": "FromImage",
@@ -1392,7 +1420,7 @@
               },
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.DesktopVirtualization/hostPools/{0}', parameters('hostPoolName'))]",
+              "scope": "[resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostPoolName'))]",
               "name": "[guid(resourceId('Microsoft.DesktopVirtualization/hostPools', parameters('hostPoolName')), resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmNamePrefix'), range(0, parameters('sessionHostCount'))[range(0, parameters('sessionHostCount'))[copyIndex()]])), 'avd-contributor')]",
               "properties": {
                 "roleDefinitionId": "[variables('desktopVirtContributorRoleId')]",
@@ -1563,7 +1591,7 @@
     {
       "condition": "[parameters('deployFSLogix')]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "deploy-fslogix",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1577,7 +1605,7 @@
           "storageAccountName": {
             "value": "[parameters('storageAccountName')]"
           },
-          "sessionHostSubnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.sessionHostSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))))]",
+          "sessionHostSubnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2025-04-01').outputs.sessionHostSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('sessionHostSubnetName'))))]",
           "deployPrivateEndpoint": {
             "value": "[parameters('deployFSLogixPrivateEndpoint')]"
           },
@@ -1591,8 +1619,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.30.3.12046",
-              "templateHash": "5864940544571610620"
+              "version": "0.42.1.51946",
+              "templateHash": "9787903831343878697"
             }
           },
           "parameters": {
@@ -1689,7 +1717,7 @@
             },
             {
               "type": "Microsoft.Resources/deployments",
-              "apiVersion": "2022-09-01",
+              "apiVersion": "2025-04-01",
               "name": "configure-fslogix-auth",
               "properties": {
                 "expressionEvaluationOptions": {
@@ -1719,8 +1747,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.30.3.12046",
-                      "templateHash": "10391284724477328974"
+                      "version": "0.42.1.51946",
+                      "templateHash": "16528594321879611463"
                     }
                   },
                   "parameters": {
@@ -1815,7 +1843,7 @@
     {
       "condition": "[and(parameters('deployFSLogix'), parameters('deployFSLogixPrivateEndpoint'))]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "deploy-fslogix-pe",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1826,9 +1854,9 @@
           "location": {
             "value": "[parameters('location')]"
           },
-          "storageAccountId": "[if(parameters('deployFSLogix'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-fslogix'), '2022-09-01').outputs.storageAccountId.value), createObject('value', ''))]",
-          "privateEndpointSubnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.privateEndpointSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName'))))]",
-          "vnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.vnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))))]",
+          "storageAccountId": "[if(parameters('deployFSLogix'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-fslogix'), '2025-04-01').outputs.storageAccountId.value), createObject('value', ''))]",
+          "privateEndpointSubnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2025-04-01').outputs.privateEndpointSubnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName'))))]",
+          "vnetId": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2025-04-01').outputs.vnetId.value), createObject('value', extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName'))))]",
           "tags": {
             "value": "[variables('tags')]"
           }
@@ -1839,8 +1867,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.30.3.12046",
-              "templateHash": "10091203828824490972"
+              "version": "0.42.1.51946",
+              "templateHash": "8950179823780053396"
             }
           },
           "parameters": {
@@ -1982,7 +2010,7 @@
     {
       "condition": "[parameters('deployMonitoring')]",
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
+      "apiVersion": "2025-04-01",
       "name": "deploy-monitoring",
       "properties": {
         "expressionEvaluationOptions": {
@@ -2006,8 +2034,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.30.3.12046",
-              "templateHash": "2421454683100223721"
+              "version": "0.42.1.51946",
+              "templateHash": "13237063537331067121"
             }
           },
           "parameters": {
@@ -2073,47 +2101,47 @@
   "outputs": {
     "hostPoolName": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.hostPoolName.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2025-04-01').outputs.hostPoolName.value]"
     },
     "workspaceId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.workspaceId.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2025-04-01').outputs.workspaceId.value]"
     },
     "desktopAppGroupId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.desktopAppGroupId.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2025-04-01').outputs.desktopAppGroupId.value]"
     },
     "remoteAppGroupId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.remoteAppGroupId.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2025-04-01').outputs.remoteAppGroupId.value]"
     },
     "publishedAppGroupIds": {
       "type": "array",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2022-09-01').outputs.publishedAppGroupIds.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-hostpool'), '2025-04-01').outputs.publishedAppGroupIds.value]"
     },
     "vnetId": {
       "type": "string",
-      "value": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.vnetId.value, extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName')))]"
+      "value": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2025-04-01').outputs.vnetId.value, extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('existingVnetName')))]"
     },
     "privateEndpointSubnetId": {
       "type": "string",
-      "value": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2022-09-01').outputs.privateEndpointSubnetId.value, extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName')))]"
+      "value": "[if(equals(parameters('networkMode'), 'CreateNewVnet'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-network'), '2025-04-01').outputs.privateEndpointSubnetId.value, extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('effectiveExistingVnetResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('privateEndpointSubnetName')))]"
     },
     "sessionHostVmNames": {
       "type": "array",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-sessionhosts'), '2022-09-01').outputs.vmNames.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-sessionhosts'), '2025-04-01').outputs.vmNames.value]"
     },
     "fslogixStorageAccount": {
       "type": "string",
-      "value": "[if(parameters('deployFSLogix'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-fslogix'), '2022-09-01').outputs.storageAccountName.value, 'N/A')]"
+      "value": "[if(parameters('deployFSLogix'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-fslogix'), '2025-04-01').outputs.storageAccountName.value, 'N/A')]"
     },
     "fslogixPrivateEndpointId": {
       "type": "string",
-      "value": "[if(and(parameters('deployFSLogix'), parameters('deployFSLogixPrivateEndpoint')), reference(resourceId('Microsoft.Resources/deployments', 'deploy-fslogix-pe'), '2022-09-01').outputs.privateEndpointId.value, 'N/A')]"
+      "value": "[if(and(parameters('deployFSLogix'), parameters('deployFSLogixPrivateEndpoint')), reference(resourceId('Microsoft.Resources/deployments', 'deploy-fslogix-pe'), '2025-04-01').outputs.privateEndpointId.value, 'N/A')]"
     },
     "logAnalyticsWorkspace": {
       "type": "string",
-      "value": "[if(parameters('deployMonitoring'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-monitoring'), '2022-09-01').outputs.workspaceName.value, 'N/A')]"
+      "value": "[if(parameters('deployMonitoring'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-monitoring'), '2025-04-01').outputs.workspaceName.value, 'N/A')]"
     },
     "effectiveAvdMode": {
       "type": "string",

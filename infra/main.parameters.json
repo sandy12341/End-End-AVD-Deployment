@@ -16,6 +16,7 @@
     "galleryName": { "value": "" },
     "galleryImageDefinitionName": { "value": "" },
     "galleryImageVersion": { "value": "latest" },
+    "sessionHostSecurityType": { "value": "Auto" },
     "avdMode": { "value": "" },
     "hostPoolType": { "value": "Pooled" },
     "authenticationType": { "value": "EntraID" },

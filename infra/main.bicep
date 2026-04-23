@@ -58,6 +58,10 @@ param galleryImageDefinitionName string = ''
 @description('Azure Compute Gallery image version for session hosts when imageSource is AzureComputeGallery.')
 param galleryImageVersion string = 'latest'
 
+@description('Session host security type. Auto uses Trusted Launch for Azure Compute Gallery images and Standard for Marketplace images.')
+@allowed(['Auto', 'Standard', 'TrustedLaunch'])
+param sessionHostSecurityType string = 'Auto'
+
 @description('Preferred AVD delivery mode. Leave empty to preserve the legacy desktop-only behavior driven by hostPoolType.')
 @allowed(['', 'PersonalDesktop', 'PooledRemoteApp', 'PooledDesktopAndRemoteApp'])
 param avdMode string = ''
@@ -177,6 +181,9 @@ var legacyAccessAssignments = [for oid in normalizedAvdUserObjectIds: {
 var desktopEffectiveAssignments = union(desktopAccessAssignments, publishDesktop ? legacyAccessAssignments : [])
 var remoteAppEffectiveAssignments = union(remoteAppAccessAssignments, publishRemoteApps ? legacyAccessAssignments : [])
 var vmLoginEffectiveAssignments = union(desktopEffectiveAssignments, remoteAppEffectiveAssignments)
+var effectiveSessionHostSecurityType = sessionHostSecurityType == 'TrustedLaunch' || (sessionHostSecurityType == 'Auto' && imageSource == 'AzureComputeGallery')
+  ? 'TrustedLaunch'
+  : 'Standard'
 var sessionHostImageReference = imageSource == 'AzureComputeGallery'
   ? {
       id: resourceId(galleryImageSubscriptionId, galleryImageResourceGroupName, 'Microsoft.Compute/galleries/images/versions', galleryName, galleryImageDefinitionName, galleryImageVersion)
@@ -258,6 +265,7 @@ module sessionHosts 'modules/sessionhosts.bicep' = {
     location: location
     sessionHostCount: sessionHostCount
     vmSize: vmSize
+    sessionHostSecurityType: effectiveSessionHostSecurityType
     imageReference: sessionHostImageReference
     subnetId: sessionHostSubnetId
     hostPoolName: hostPool.outputs.hostPoolName

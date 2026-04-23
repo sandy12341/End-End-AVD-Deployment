@@ -9,6 +9,10 @@ param sessionHostCount int = 1
 @description('VM size for session hosts')
 param vmSize string = 'Standard_D2ads_v5'
 
+@description('Security type for session hosts.')
+@allowed(['Standard', 'TrustedLaunch'])
+param sessionHostSecurityType string = 'Standard'
+
 @description('Subnet resource ID for session hosts')
 param subnetId string
 
@@ -87,6 +91,13 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2024-07-01' = [
       hardwareProfile: {
         vmSize: vmSize
       }
+      securityProfile: sessionHostSecurityType == 'TrustedLaunch' ? {
+        securityType: 'TrustedLaunch'
+        uefiSettings: {
+          secureBootEnabled: true
+          vTpmEnabled: true
+        }
+      } : null
       storageProfile: {
         osDisk: {
           createOption: 'FromImage'
