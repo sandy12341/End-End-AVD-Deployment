@@ -55,7 +55,7 @@
             "name": "hostPoolName",
             "type": "Microsoft.Common.TextBox",
             "label": "Host pool name",
-            "defaultValue": "hp-avd-avd1-dev",
+            "defaultValue": "[concat('hp-avd-', basics('deploymentPrefix'), '-', basics('environment'))]",
             "constraints": {
               "required": true,
               "regex": "^[A-Za-z0-9-]{3,64}$",
