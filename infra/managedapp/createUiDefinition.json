@@ -192,54 +192,6 @@
             }
           },
           {
-            "name": "showAdvancedMarketplaceImageFields",
-            "type": "Microsoft.Common.CheckBox",
-            "label": "Show advanced Marketplace image fields",
-            "defaultValue": false,
-            "visible": "[equals(steps('instanceDetails').imageSource, 'Marketplace')]",
-            "toolTip": "Enable this only if you want to browse the full Marketplace catalog instead of using the curated AVD-supported OS list."
-          },
-          {
-            "name": "marketplaceImagePublisher",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Marketplace publisher",
-            "defaultValue": "microsoftwindowsdesktop",
-            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-            "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
-            }
-          },
-          {
-            "name": "marketplaceImageOffer",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Marketplace offer",
-            "defaultValue": "windows-11",
-            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-            "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
-            }
-          },
-          {
-            "name": "marketplaceImageSku",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Marketplace SKU",
-            "defaultValue": "win11-24h2-avd",
-            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-            "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
-            }
-          },
-          {
-            "name": "marketplaceImageVersion",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Marketplace version",
-            "defaultValue": "latest",
-            "visible": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]",
-            "constraints": {
-              "required": "[and(equals(steps('instanceDetails').imageSource, 'Marketplace'), steps('instanceDetails').showAdvancedMarketplaceImageFields)]"
-            }
-          },
-          {
             "name": "galleryPicker",
             "type": "Microsoft.Solutions.ResourceSelector",
             "label": "Azure Compute Gallery",
@@ -917,10 +869,10 @@
       "vmSize": "[steps('instanceDetails').vmSize]",
       "imageSource": "[steps('instanceDetails').imageSource]",
       "sessionHostSecurityType": "[steps('instanceDetails').sessionHostSecurityType]",
-      "marketplaceImagePublisher": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).publisher, steps('instanceDetails').marketplaceImagePublisher)]",
-      "marketplaceImageOffer": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).offer, steps('instanceDetails').marketplaceImageOffer)]",
-      "marketplaceImageSku": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).sku, steps('instanceDetails').marketplaceImageSku)]",
-      "marketplaceImageVersion": "[if(and(equals(steps('instanceDetails').imageSource, 'Marketplace'), not(steps('instanceDetails').showAdvancedMarketplaceImageFields)), parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).version, steps('instanceDetails').marketplaceImageVersion)]",
+      "marketplaceImagePublisher": "[parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).publisher]",
+      "marketplaceImageOffer": "[parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).offer]",
+      "marketplaceImageSku": "[parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).sku]",
+      "marketplaceImageVersion": "[parse(if(empty(steps('instanceDetails').avdCompatibleMarketplaceOs), '{\"publisher\":\"microsoftwindowsdesktop\",\"offer\":\"office-365\",\"sku\":\"win11-24h2-avd-m365\",\"version\":\"latest\"}', steps('instanceDetails').avdCompatibleMarketplaceOs)).version]",
       "galleryImageSubscriptionId": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), last(take(split(steps('instanceDetails').galleryPicker.id, '/'), 3)), subscription().subscriptionId)]",
       "galleryImageResourceGroupName": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), and(contains(steps('instanceDetails').galleryPicker, 'id'), not(empty(steps('instanceDetails').galleryPicker.id)))), last(take(split(steps('instanceDetails').galleryPicker.id, '/'), 5)), '')]",
       "galleryName": "[if(and(equals(steps('instanceDetails').imageSource, 'AzureComputeGallery'), contains(steps('instanceDetails').galleryPicker, 'name')), steps('instanceDetails').galleryPicker.name, '')]",
