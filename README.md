@@ -260,7 +260,7 @@ No cross-tenant permissions needed — each user manages their own deployed reso
 - **Session Hosts**: Windows 11 24H2 Multi-Session, Entra ID joined, System Assigned Managed Identity
 - **FSLogix**: Azure Files share for user profile containers (Entra ID Kerberos auth, VNet-restricted)
 - **Networking**: Supports brownfield deployments into an existing VNet or greenfield deployments that create a spoke VNet and peer it to a selected hub VNet
-- **Monitoring**: Log Analytics workspace for diagnostics
+- **Monitoring**: Log Analytics workspace plus Azure Monitor Agent, Data Collection Rule associations, and AVD/FSLogix diagnostic settings
 - **Application Publishing**: Desktop app group, RemoteApp app group, or both from the same template
 - **Access Assignment**: Use `desktopAccessAssignments` and `remoteAppAccessAssignments` for typed `User`, `Group`, or `ServicePrincipal` assignment scopes. The legacy `avdUserObjectIds` input is still supported as a compatibility shortcut for shared user assignments.
 - **Security**: TLS 1.2 enforced on storage, no shared key access, and a CSE-driven AVD agent install using a GitHub-hosted script to avoid Windows command-line length limits
@@ -342,7 +342,7 @@ New-AzResourceGroupDeployment `
 | `adminPassword` | secureString | - | Local admin password (required) |
 | `deployFSLogix` | bool | `true` | Deploy FSLogix Azure Files storage |
 | `storageAccountName` | string | - | Required unique storage account name for FSLogix (globally unique, 3-24 chars) |
-| `deployMonitoring` | bool | `true` | Deploy Log Analytics workspace |
+| `deployMonitoring` | bool | `true` | Deploy Log Analytics workspace and enable AVD, VM, and FSLogix monitoring |
 | `avdUserObjectIds` | string | _(empty)_ | Compatibility input for comma- or newline-separated Entra user object IDs applied to all published app groups |
 | `desktopAccessAssignments` | array | `[]` | Typed access assignments for the desktop app group. Each item includes `principalId` and `principalType` |
 | `remoteAppAccessAssignments` | array | `[]` | Typed access assignments for the RemoteApp app group. Each item includes `principalId` and `principalType` |
@@ -375,6 +375,7 @@ If `desktopAccessAssignments` or `remoteAppAccessAssignments` is supplied, the t
 - `infra/samples/main.personaldesktop.gallery.parameters.json`
 - `infra/samples/main.pooledremoteapp.gallery.parameters.json`
 - `infra/samples/main.pooleddesktopandremoteapp.gallery.parameters.json`
+- `infra/samples/main.monitoring.validation.parameters.json` - greenfield validation sample that turns on monitoring and the FSLogix private endpoint path
 
 Use one of the sample files directly with Azure CLI or PowerShell and override only the environment-specific secure values:
 
@@ -386,6 +387,17 @@ az deployment group create \
   --parameters adminPassword='<secure-password>' \
                storageAccountName='<globally-unique-storage-name>' \
                avdUserObjectIds='<entra-object-id>'
+```
+
+Use the monitoring validation sample when you want a non-destructive `what-if` that exercises the end-to-end observability path:
+
+```bash
+az deployment group what-if \
+  --resource-group <validation-resource-group> \
+  --template-file infra/main.bicep \
+  --parameters @infra/samples/main.monitoring.validation.parameters.json \
+  --parameters adminPassword='<secure-password>' \
+               storageAccountName='<globally-unique-storage-name>'
 ```
 
 ## Connecting to AVD
