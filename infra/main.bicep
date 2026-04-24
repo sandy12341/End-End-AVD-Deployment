@@ -276,6 +276,8 @@ module sessionHosts 'modules/sessionhosts.bicep' = {
     domainJoinUsername: domainJoinUsername
     domainJoinPassword: domainJoinPassword
     domainJoinOuPath: domainJoinOuPath
+    enableMonitoring: deployMonitoring
+    dataCollectionRuleId: deployMonitoring ? monitoring!.outputs.dataCollectionRuleId : ''
     deploymentInstanceSeed: deploymentInstanceSeed
     vmNamePrefix: 'vm-avd-${namingPrefix}'
     tags: tags
@@ -309,7 +311,6 @@ module fslogixDns 'modules/fslogixPrivateDns.bicep' = if (deployFSLogix && deplo
     vnetId: vnetId
     tags: tags
   }
-  dependsOn: [fslogix]
 }
 
 // ── Monitoring ──
@@ -322,7 +323,125 @@ module monitoring 'modules/monitoring.bicep' = if (deployMonitoring) {
   params: {
     location: location
     workspaceName: 'log-avd-${namingPrefix}'
+    dataCollectionRuleName: 'dcr-avd-${namingPrefix}'
     tags: tags
+  }
+}
+
+resource monitoredHostPool 'Microsoft.DesktopVirtualization/hostPools@2024-04-08-preview' existing = if (deployMonitoring) {
+  name: hostPoolName
+}
+
+resource monitoredWorkspace 'Microsoft.DesktopVirtualization/workspaces@2024-04-08-preview' existing = if (deployMonitoring) {
+  name: 'ws-avd-${namingPrefix}'
+}
+
+resource monitoredFslogixStorage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = if (deployFSLogix && deployMonitoring) {
+  name: storageAccountName
+}
+
+resource hostPoolDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (deployMonitoring) {
+  name: 'diag-hostpool-to-law'
+  scope: monitoredHostPool
+  properties: {
+    workspaceId: monitoring!.outputs.workspaceId
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
+
+resource avdWorkspaceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (deployMonitoring) {
+  name: 'diag-workspace-to-law'
+  scope: monitoredWorkspace
+  properties: {
+    workspaceId: monitoring!.outputs.workspaceId
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
+
+resource desktopAppGroupDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (deployMonitoring && publishDesktop) {
+  name: 'diag-desktop-appgroup-to-law'
+  scope: desktopAppGroup
+  properties: {
+    workspaceId: monitoring!.outputs.workspaceId
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
+
+resource remoteAppGroupDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (deployMonitoring && publishRemoteApps) {
+  name: 'diag-remoteapp-appgroup-to-law'
+  scope: remoteAppGroup
+  properties: {
+    workspaceId: monitoring!.outputs.workspaceId
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
+
+resource fslogixStorageDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (deployFSLogix && deployMonitoring) {
+  name: 'diag-fslogix-storage-to-law'
+  scope: monitoredFslogixStorage
+  properties: {
+    workspaceId: monitoring!.outputs.workspaceId
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
   }
 }
 
@@ -387,5 +506,7 @@ output sessionHostVmNames array = sessionHosts.outputs.vmNames
 output fslogixStorageAccount string = deployFSLogix ? fslogix!.outputs.storageAccountName : 'N/A'
 output fslogixPrivateEndpointId string = (deployFSLogix && deployFSLogixPrivateEndpoint) ? fslogixDns!.outputs.privateEndpointId : 'N/A'
 output logAnalyticsWorkspace string = deployMonitoring ? monitoring!.outputs.workspaceName : 'N/A'
+output logAnalyticsWorkspaceId string = deployMonitoring ? monitoring!.outputs.workspaceId : 'N/A'
+output monitoringDataCollectionRuleId string = deployMonitoring ? monitoring!.outputs.dataCollectionRuleId : 'N/A'
 output effectiveAvdMode string = effectiveAvdMode
 output avdRolesAssigned bool = length(desktopEffectiveAssignments) > 0 || length(remoteAppEffectiveAssignments) > 0

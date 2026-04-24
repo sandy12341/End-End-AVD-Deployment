@@ -216,8 +216,11 @@ In greenfield mode it also waits for the network phase to complete before it sta
 Azure creates:
 
 - Log Analytics workspace: `log-avd-<prefix>-<env>`
+- Data Collection Rule for session host guest telemetry
+- Azure Monitor Agent + DCR association on each session host VM
+- Diagnostic settings for the AVD host pool, workspace, published app groups, and FSLogix storage account
 
-This gives the landing zone a monitoring workspace, although not every diagnostic setting is wired automatically by this template.
+This gives the landing zone a full observability baseline instead of only creating an empty monitoring workspace.
 
 ---
 

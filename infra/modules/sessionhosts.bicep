@@ -54,6 +54,12 @@ param imageReference object = {
 @description('Tags for all resources')
 param tags object = {}
 
+@description('When true, enables Azure Monitor Agent and guest telemetry collection on session hosts')
+param enableMonitoring bool = false
+
+@description('Resource ID of the Data Collection Rule to associate to each session host when monitoring is enabled')
+param dataCollectionRuleId string = ''
+
 @description('Name prefix for session hosts')
 param vmNamePrefix string = 'vm-avd'
 
@@ -271,6 +277,36 @@ resource avdAgentHybrid 'Microsoft.Compute/virtualMachines/runCommands@2023-09-0
       timeoutInSeconds: 5400
     }
     dependsOn: [hybridDomainJoin[i], vmRoleAssignment[i]]
+  }
+]
+
+resource azureMonitorAgent 'Microsoft.Compute/virtualMachines/extensions@2024-07-01' = [
+  for i in range(0, sessionHostCount): if (enableMonitoring) {
+    parent: sessionHosts[i]
+    name: 'AzureMonitorWindowsAgent'
+    location: location
+    tags: tags
+    properties: {
+      publisher: 'Microsoft.Azure.Monitor'
+      type: 'AzureMonitorWindowsAgent'
+      typeHandlerVersion: '1.0'
+      autoUpgradeMinorVersion: true
+      enableAutomaticUpgrade: true
+    }
+  }
+]
+
+resource monitoringRuleAssociation 'Microsoft.Insights/dataCollectionRuleAssociations@2022-06-01' = [
+  for i in range(0, sessionHostCount): if (enableMonitoring) {
+    scope: sessionHosts[i]
+    name: 'vm-monitoring-association'
+    properties: {
+      dataCollectionRuleId: dataCollectionRuleId
+      description: 'Associates the session host with the shared AVD monitoring rule.'
+    }
+    dependsOn: [
+      azureMonitorAgent[i]
+    ]
   }
 ]
 

@@ -527,8 +527,9 @@
           {
             "name": "deployMonitoring",
             "type": "Microsoft.Common.CheckBox",
-            "label": "Deploy Log Analytics monitoring",
-            "defaultValue": true
+            "label": "Deploy Log Analytics workspace and enable Monitoring",
+            "defaultValue": true,
+            "toolTip": "Creates a Log Analytics workspace, enables Azure Virtual Desktop diagnostic settings, deploys Azure Monitor Agent guest telemetry for session hosts, and sends FSLogix storage diagnostics to the workspace."
           }
         ]
       },

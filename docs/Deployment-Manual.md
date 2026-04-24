@@ -137,7 +137,7 @@ This is the recommended method. It requires **no tooling** — just a browser.
    | Admin Password | `(secure value)` | Must meet Azure complexity requirements |
   | Storage Account Name | `stavdmyappdev001` | Required when FSLogix is enabled. Must be globally unique, 3-24 chars, lowercase letters and numbers only. |
    | Deploy FSLogix | `true` | Creates Azure Files storage for profiles |
-   | Deploy Monitoring | `true` | Creates Log Analytics workspace |
+  | Deploy Monitoring | `true` | Creates Log Analytics workspace and enables AVD, VM, and FSLogix monitoring |
   | Remote Apps | JSON array | Used only when `avdMode` publishes RemoteApps |
 
   The portal no longer supplies a default `storageAccountName`. The user must enter a unique value during deployment to avoid collisions with existing storage accounts.
@@ -436,17 +436,18 @@ VM Created
 
 ### 3.8 `infra/modules/monitoring.bicep` — Log Analytics
 
-**Purpose:** Creates a Log Analytics workspace for centralized diagnostics and monitoring.
+**Purpose:** Creates a Log Analytics workspace and the monitoring primitives used to collect Azure Virtual Desktop, session host, and FSLogix telemetry.
 
 **Resources Created:**
 
 | Resource | Details |
 |---|---|
 | **Log Analytics Workspace** | SKU: PerGB2018. Retention: 30 days. |
+| **Data Collection Rule** | Windows guest telemetry baseline for Azure Monitor Agent on session hosts. |
 
-> **Note:** Conditionally deployed via the `deployMonitoring` parameter (default `true`). To enable AVD Insights, you would additionally configure diagnostic settings on the host pool and VMs to send logs to this workspace (not part of the automated deployment).
+> **Note:** Conditionally deployed via the `deployMonitoring` parameter (default `true`). When enabled, the template also configures Azure Virtual Desktop diagnostic settings, Azure Monitor Agent guest telemetry for session hosts, and FSLogix storage diagnostics to send data to this workspace.
 
-**Outputs:** `workspaceId`, `workspaceName`
+**Outputs:** `workspaceId`, `workspaceName`, `dataCollectionRuleId`, `dataCollectionRuleName`
 
 ### 3.9 `infra/scripts/Install-AVDAgent.ps1` — Agent Installation Script
 

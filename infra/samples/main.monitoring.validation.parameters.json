@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deploymentPrefix": { "value": "avdmon" },
+    "environment": { "value": "dev" },
+    "sessionHostCount": { "value": 1 },
+    "vmSize": { "value": "Standard_D2ads_v5" },
+    "imageSource": { "value": "Marketplace" },
+    "marketplaceImagePublisher": { "value": "microsoftwindowsdesktop" },
+    "marketplaceImageOffer": { "value": "windows-11" },
+    "marketplaceImageSku": { "value": "win11-24h2-avd" },
+    "marketplaceImageVersion": { "value": "latest" },
+    "avdMode": { "value": "PooledDesktopAndRemoteApp" },
+    "authenticationType": { "value": "EntraID" },
+    "hostPoolName": { "value": "hp-avd-monitoring-dev" },
+    "adminUsername": { "value": "avdadmin" },
+    "deployFSLogix": { "value": true },
+    "deployFSLogixPrivateEndpoint": { "value": true },
+    "deployMonitoring": { "value": true },
+    "remoteApps": {
+      "value": [
+        {
+          "name": "notepad",
+          "friendlyName": "Notepad",
+          "filePath": "C:\\Windows\\System32\\notepad.exe"
+        }
+      ]
+    },
+    "networkMode": { "value": "CreateNewVnet" },
+    "newVnetName": { "value": "vnet-avd-monitoring-dev" },
+    "newVnetAddressPrefix": { "value": "10.40.0.0/16" },
+    "newSessionHostSubnetName": { "value": "snet-avd-sessionhosts" },
+    "newSessionHostSubnetPrefix": { "value": "10.40.1.0/24" },
+    "newPrivateEndpointSubnetName": { "value": "snet-avd-privateendpoints" },
+    "newPrivateEndpointSubnetPrefix": { "value": "10.40.2.0/24" },
+    "hubVnetResourceId": { "value": "" },
+    "avdUserObjectIds": { "value": "" },
+    "desktopAccessAssignments": { "value": [] },
+    "remoteAppAccessAssignments": { "value": [] },
+    "domainFqdn": { "value": "" },
+    "domainJoinUsername": { "value": "" },
+    "domainJoinPassword": { "value": "" },
+    "domainJoinOuPath": { "value": "" }
+  }
+}
